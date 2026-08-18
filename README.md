@@ -915,6 +915,15 @@ olguyu aynı bölümden istiyor. Yani doğru tasarım "işaretle **ve** tam metn
 
 ---
 
+## Katkıda bulunanlar
+
+| | |
+|---|---|
+| **Sefa Çakmak** | sefacakmak194@gmail.com |
+| **İlayda Adaklı** | adakliilayda@gmail.com |
+
+---
+
 ## Lisans
 
 Tescilli — tüm hakları saklıdır. Ayrıntı ve üçüncü taraf bildirimleri için

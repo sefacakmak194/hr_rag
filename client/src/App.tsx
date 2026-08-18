@@ -3,12 +3,14 @@ import ChatWindow from './components/ChatWindow';
 import StatusIndicator from './components/StatusIndicator';
 import DocumentManager from './components/DocumentManager';
 import AuthGate from './components/AuthGate';
+import AuditPanel from './components/AuditPanel';
 import type { HealthResponse, SessionUser } from './types';
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDocs, setShowDocs] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -48,6 +50,17 @@ export default function App() {
               Korpus
             </button>
           )}
+          <button
+            className={`docs-toggle${showAudit ? ' docs-toggle-on' : ''}`}
+            onClick={() => setShowAudit((v) => !v)}
+            title={
+              user.role === 'yonetici'
+                ? 'Tüm kullanıcıların erişim kaydı'
+                : 'Kendi erişim kaydınız'
+            }
+          >
+            Denetim
+          </button>
           <div className="user-chip" title={`Rol: ${ROLE_LABEL[user.role]}`}>
             <span className="user-name">{user.username}</span>
             <span className={`user-role user-role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
@@ -58,9 +71,10 @@ export default function App() {
         </div>
       </header>
 
-      <main className={showDocs ? 'with-docs' : undefined}>
+      <main className={showDocs || showAudit ? 'with-docs' : undefined}>
         <ChatWindow onActivity={refresh} />
         {showDocs && canManage(user) && <DocumentManager onChanged={refresh} />}
+        {showAudit && <AuditPanel user={user} />}
       </main>
 
       <footer>

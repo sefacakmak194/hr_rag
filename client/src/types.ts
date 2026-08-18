@@ -85,3 +85,27 @@ export interface AuthStatus {
   user: SessionUser | null;
   sessionHours: number;
 }
+
+export interface AuditCitation {
+  doc: string;
+  section: string;
+}
+
+export interface AuditRow {
+  id: number;
+  at: string;
+  username: string;
+  role: SessionUser['role'];
+  /** Yalnizca kisitli dokumana erisimde dolu; genel erisimde null. */
+  question: string | null;
+  citations: AuditCitation[];
+  answered: boolean;
+  durationMs: number;
+}
+
+export interface AuditResponse {
+  summary: { total: number; unanswered: number; users: number };
+  /** Sunucunun belirledigi kapsam; istemci bunu secmez. */
+  scope: 'tumu' | 'kendi';
+  rows: AuditRow[];
+}

@@ -64,7 +64,9 @@ CREATE TABLE audit_log (
   user_id        INTEGER NOT NULL,
   username       TEXT    NOT NULL,  -- denormalize: hesap silinse de kayıt okunur
   role           TEXT    NOT NULL,
-  question       TEXT    NOT NULL,
+  -- Soru metni YALNIZCA kısıtlı dokümana erişildiğinde doldurulur (bkz. Kararlar).
+  -- Genel dokümana erişimde NULL kalır.
+  question       TEXT,
   resolved_query TEXT,              -- takip sorusu yeniden yazıldıysa
   citations      TEXT    NOT NULL,  -- JSON [{docTitle, section, score}]
   answered       INTEGER NOT NULL,  -- 0 = alaka kapısına takıldı
@@ -169,15 +171,63 @@ Erişim kontrolü test edilmeden "var" sayılamaz. Yeni paket: `test:access`.
 - Her yanıt **tam olarak bir** denetim satırı üretiyor
 - Denetim satırı UPDATE ve DELETE ile değiştirilemiyor (trigger)
 - Alaka kapısına takılan soru da denetime yazılıyor (`answered = 0`)
+- Genel dokümana erişimde `question` alanı NULL, kısıtlı erişimde dolu
+- `calisan` rolü yükleme/silme/yeniden indeksleme uçlarına erişemiyor (403)
+- Yetkisiz dokümana denk gelen soru, kapsam dışı soruyla **aynı** metni alıyor
+  (iki mesaj ayrışırsa varlık sızar)
+- Kullanıcı kendi denetim satırlarını görüyor, başkasınınkini görmüyor
 
 Bu paket LLM gerektirmiyor, dolayısıyla CI'da koşar.
 
 ---
 
-## Açık sorular
+## Kararlar
 
-- **İlk kurulumda hesap nasıl açılır?** Öneri: ilk çalıştırmada `yonetici`
-  rolünde tek hesap oluşturma ekranı; sonrası yönetici panelinden.
-- **Mevcut 20 doküman hangi etiketi alır?** Öneri: hepsi `genel`, etiketleme
-  yöneticiye bırakılır. Sessizce `ik` yapmak mevcut davranışı bozar.
-- **LDAP/AD** yol haritasında opsiyonel yazıyor; bu sprintte kapsam dışı.
+Tamamı kullanıcı tarafından onaylandı; tasarım bunlara göre kilitlendi.
+
+### Soru metni yalnızca kısıtlı erişimde saklanır
+
+`genel` etiketli bir dokümana erişimde denetim satırı kullanıcı, zaman ve
+dönen alıntıları tutar; `question` alanı **NULL** kalır. Soru metni yalnızca
+`ik` veya `yonetici` etiketli bir dokümana erişildiğinde yazılır.
+
+Gerekçe: denetim ihtiyacı zaten orada. Her soruyu kaydetmek çalışanın ne merak
+ettiğini kalıcı olarak adına yazar — mobbing şikayeti veya istifa süreci gibi
+konular dahil. Bu dokümanlar `genel` olduğu için, bu kural onları kayıt dışında
+bırakır ve sisteme soru sormaktan çekinmeyi önler.
+
+### Denetim kaydını yönetici tümüyle, kullanıcı kendi satırlarını görür
+
+KVKK kişiye kendi verisine erişim hakkı tanıyor; kendi kaydını görebilmek bu
+hakkı doğrudan karşılar ve sistemi şeffaf yapar. Başkasının kaydını yalnızca
+`yonetici` görür.
+
+### Yetkisiz dokümana denk gelen soru "bilgi bulunamadı" alır
+
+Kapsam dışı soruyla **birebir aynı** cevap. Dokümanın var olduğu bilgisi bile
+sızmaz.
+
+Bunun güzel tarafı: "kilit kapıda" kararı sayesinde bu davranış **kendiliğinden**
+oluşuyor. Havuz aramadan önce daraldığı için yetkisiz doküman zaten aday
+değildir; hiçbir parça alaka kapısını geçemez ve mevcut "bulunamadı" yanıtı
+devreye girer. **Ayrı bir kod dalı yazılmıyor** — dolayısıyla iki mesajın
+birbirinden ayrışıp varlık sızdırması da mümkün değil.
+
+### Yükleme ve yeniden indeksleme: `ik` + `yonetici`
+
+Bugün herkes yükleyebiliyor; rol geldikten sonra bu açık kalmamalı. `calisan`
+rolü `POST /api/documents`, `DELETE` ve `reindex` uçlarına erişemez.
+
+### İlk kurulumda tek seferlik yönetici hesabı
+
+Hiç kullanıcı yoksa uygulama kurulum ekranı gösterir ve `yonetici` rolünde tek
+hesap açtırır. Sonraki hesaplar yönetici panelinden eklenir.
+
+### Mevcut 20 doküman `genel` etiketi alır
+
+Sessizce `ik` yapmak bugünkü davranışı bozar ve eval paketi kırmızı yanar.
+Etiketleme yöneticiye bırakılır.
+
+### LDAP/AD bu sprintte kapsam dışı
+
+Yol haritasında opsiyonel; yerel hesap doğrulaması yeterli.

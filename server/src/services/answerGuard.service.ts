@@ -54,7 +54,23 @@ export function inspectAnswer(answer: string): DegenerateVerdict {
   });
   if (shouty.length >= 3) return { degenerate: true, reason: `${shouty.length} buyuk harfli sozcuk` };
 
-  // 3) Ayni cumle birden fazla kez.
+  // 3) Ayni harf pes pese 8+ kez: tek jeton bozulmasi.
+  //
+  //     Olculdu — qwen3.5-2b-text-cuda-gpu varyanti bu makinede Turkce
+  //     karakterlerde cokuyor ve "Dogum yardimi ne kadar?" sorusuna
+  //     "ÇÇÇÇÇÇÇÇÇÇÇÇ..." donuyor.
+  //
+  //     Ustteki iki kural bunu KACIRIR: ikisi de en az uc SOZCUK bekler,
+  //     bu cikti ise bosluksuz tek sozcuktur. Kalkan "donguye girmis cumle
+  //     uretimi" bicimine gore yazilmisti; bu farkli bir bozulma bicimi.
+  //
+  //     Esik 8 kasitli olarak yuksek: hicbir Turkce sozcukte ayni harf
+  //     pes pese ikiden fazla gecmez, dolayisiyla yanlis alarm riski yok.
+  if (/(\p{L})\1{7,}/u.test(text)) {
+    return { degenerate: true, reason: 'ayni harf pes pese tekrarlandi' };
+  }
+
+  // 4) Ayni cumle birden fazla kez.
   const sentences = text
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim().toLocaleLowerCase('tr-TR'))

@@ -15,7 +15,7 @@
     "build:exe": "node ../scripts/build-exe.mjs",
     "eval": "tsx ../scripts/eval-answers.ts",
     "test:policy": "tsx ../scripts/test-policy.ts",
-    "test": "npm run test:policy && npm run test:evidence && npm run test:documents && npm run test:formats && npm run test:audit && npm run test:rag && npm run test:pdf",
+    "test": "npm run test:policy && npm run test:guard && npm run test:evidence && npm run test:documents && npm run test:formats && npm run test:audit && npm run test:rag && npm run test:pdf",
     "pdf": "node ../scripts/md-to-pdf.mjs",
     "test:pdf": "tsx ../scripts/test-pdf.ts",
     "ingest:pdf": "node -e \"process.env.CORPUS_DIR=require('path').resolve('../data/corpus-pdf');require('child_process').execFileSync(process.platform==='win32'?'npx.cmd':'npx',['tsx','../scripts/ingest.ts'],{stdio:'inherit',env:process.env})\"",
@@ -24,7 +24,8 @@
     "test:documents": "tsx ../scripts/test-documents.ts",
     "test:formats": "tsx ../scripts/test-formats.ts",
     "fixtures": "node ../scripts/make-fixtures.mjs",
-    "test:audit": "tsx ../scripts/test-corpus-audit.ts"
+    "test:audit": "tsx ../scripts/test-corpus-audit.ts",
+    "test:guard": "tsx ../scripts/test-guard.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

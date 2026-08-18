@@ -1,0 +1,86 @@
+Telif Hakkı (c) 2026 Sefa Çakmak. Tüm hakları saklıdır.
+Copyright (c) 2026 Sefa Çakmak. All rights reserved.
+
+--------------------------------------------------------------------------
+TÜRKÇE
+--------------------------------------------------------------------------
+
+Bu yazılım ve beraberindeki dokümantasyon ("Yazılım") tescillidir ve
+gizlidir. Yazılım açık kaynak değildir.
+
+1. HAK SAHİPLİĞİ
+   Yazılım üzerindeki tüm fikri mülkiyet hakları telif hakkı sahibine
+   aittir. Bu belge hiçbir hak devri içermez.
+
+2. YASAK KULLANIMLAR
+   Telif hakkı sahibinin ÖNCEDEN YAZILI izni olmaksızın Yazılım'ın
+   tamamının veya bir kısmının kopyalanması, değiştirilmesi, birleştirilmesi,
+   yayımlanması, dağıtılması, alt lisanslanması, satılması, kiralanması veya
+   türev çalışmalarının oluşturulması yasaktır.
+
+3. DEĞERLENDİRME İZNİ
+   Yazılım'a telif hakkı sahibi tarafından erişim verilen kişi ve kurumlar,
+   Yazılım'ı YALNIZCA değerlendirme, inceleme ve teknik denetim amacıyla
+   görüntüleyebilir ve kendi ortamlarında çalıştırabilir. Bu izin;
+   yarışma/program jürilerini ve pilot değerlendirme yapan kurumları kapsar.
+   Üretim ortamında kullanım, ayrı bir yazılı lisans sözleşmesi gerektirir.
+
+4. GARANTİ REDDİ
+   Yazılım "OLDUĞU GİBİ" sunulur; açık veya örtülü hiçbir garanti verilmez.
+   Yazılım, hukuki veya bağlayıcı İK danışmanlığı sağlamaz; ürettiği yanıtlar
+   dayanak gösterilen kurum içi mevzuat metniyle birlikte değerlendirilmelidir.
+
+5. SORUMLULUK SINIRI
+   Telif hakkı sahibi, Yazılım'ın kullanımından doğan hiçbir doğrudan veya
+   dolaylı zarardan sorumlu tutulamaz.
+
+Lisanslama talepleri için: sefacakmak194@gmail.com
+
+--------------------------------------------------------------------------
+ENGLISH (summary — the Turkish text above governs)
+--------------------------------------------------------------------------
+
+This software is proprietary and confidential. It is NOT open source.
+
+No permission is granted to copy, modify, distribute, sublicense or sell
+this software, in whole or in part, without the prior WRITTEN consent of the
+copyright holder.
+
+Parties granted access by the copyright holder may view and run the software
+SOLELY for evaluation, review and technical audit purposes — this includes
+competition or program juries and organizations conducting pilot
+evaluations. Production use requires a separate written license agreement.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. It does not
+constitute legal or binding HR advice; its answers must be read together with
+the cited internal policy text. The copyright holder is not liable for any
+damages arising from its use.
+
+Licensing enquiries: sefacakmak194@gmail.com
+
+--------------------------------------------------------------------------
+ÜÇÜNCÜ TARAF BİLEŞENLER / THIRD-PARTY COMPONENTS
+--------------------------------------------------------------------------
+
+Yukarıdaki koşullar YALNIZCA bu depodaki özgün kaynak koda uygulanır.
+Aşağıdaki üçüncü taraf bileşenler kendi lisanslarına tabidir ve bu belge
+onların koşullarını değiştirmez:
+
+  Apache-2.0     @huggingface/transformers, pdfjs-dist, tesseract.js, sharp
+  MIT            onnxruntime-node, express, react, react-dom, vite
+  BSD-2-Clause   mammoth
+  MIT/GPL-3.0    jszip (kullanıcı seçimli)
+
+Depoda taşınan veri dosyaları:
+
+  server/vendor/tessdata/tur.traineddata
+      Tesseract OCR Türkçe dil modeli (tesseract-ocr/tessdata_fast),
+      Apache-2.0. Hava boşluklu (air-gapped) çalışma zorunluluğu nedeniyle
+      CDN'den indirilmek yerine depoda tutulur.
+
+Çalışma zamanında indirilen model:
+
+  Xenova/multilingual-e5-small — MIT (intfloat/multilingual-e5-small
+      türevi). Bu depoda dağıtılmaz; ilk kurulumda indirilir.
+
+Microsoft Foundry Local ayrı bir üründür ve kendi lisans koşullarına tabidir.

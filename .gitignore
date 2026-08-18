@@ -24,3 +24,6 @@ Thumbs.db
 # NOT: scripts/fixtures/ BILINCLI olarak izleniyor. Uretici betik
 # (make-fixtures.mjs) taranmis PDF icin Chrome'a ve Windows yollarina bagli;
 # CI'da uretilemez. Dosyalar 81 KB, test girdisi olarak depoda tutuluyor.
+
+# Model karsilastirmasinin ara kaydi — kosum bitince silinir
+data/.compare-checkpoint.json

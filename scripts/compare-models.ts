@@ -141,7 +141,46 @@ console.log(`\n  Model karsilastirmasi — ${models.length} model x ${selected.l
 if (llmOnly) console.log("  (yalnizca LLM'e giden vakalar)");
 console.log('');
 
-const results: ModelResult[] = [];
+/**
+ * Ara kayit dosyasi.
+ *
+ * NEDEN: matris eskiden yalnizca TUM modeller bitince yaziliyordu. Foundry
+ * daemon'i uc modelin ortasinda coktugunde (olculdu: 4 saat calistiktan sonra
+ * "Not running") tamamlanmis iki modelin sonucu da ucuyordu — sure olcumleri
+ * dahil, yani bir saatlik kosum bosa gidiyordu.
+ *
+ * Artik her model bitince buraya yaziliyor; yeniden baslatildiginda olculmus
+ * modeller atlanir. Sifirdan olcmek icin: COMPARE_FRESH=1
+ */
+const CHECKPOINT = path.join(ROOT, 'data', '.compare-checkpoint.json');
+
+let results: ModelResult[] = [];
+if (process.env.COMPARE_FRESH !== '1' && fs.existsSync(CHECKPOINT)) {
+  try {
+    const saved = JSON.parse(fs.readFileSync(CHECKPOINT, 'utf-8')) as ModelResult[];
+    // Yalnizca GERCEKTEN olculmus modelleri devral; hatali olanlar yeniden denensin.
+    results = saved.filter((r) => r.started && r.durations?.length);
+    if (results.length) {
+      console.log(`  ara kayittan devralindi: ${results.map((r) => r.model).join(', ')}`);
+      console.log('  (sifirdan olcmek icin COMPARE_FRESH=1)');
+      console.log('');
+    }
+  } catch {
+    // Bozuk ara kayit olcumu engellemesin.
+  }
+}
+
+/** Sonucu listeye ekler ve ANINDA diske yazar. */
+function record(r: ModelResult): void {
+  results.push(r);
+  try {
+    fs.writeFileSync(CHECKPOINT, JSON.stringify(results, null, 2), 'utf-8');
+  } catch {
+    // Ara kayit yazilamazsa olcum yine de surer.
+  }
+}
+
+const measured = new Set(results.map((r) => r.model));
 let port = 5390;
 
 for (const model of models) {
@@ -158,6 +197,11 @@ for (const model of models) {
     perCase: [],
   };
 
+  if (measured.has(model)) {
+    console.log(`  --- ${model} — ara kayitta var, atlandi`);
+    continue;
+  }
+
   console.log(`  --- ${model} (port ${port})`);
 
   process.stdout.write('      model yukleniyor... ');
@@ -166,7 +210,7 @@ for (const model of models) {
 
   if (loadError) {
     r.error = `model yuklenemedi: ${loadError}`;
-    results.push(r);
+    record(r);
     console.log('');
     continue;
   }
@@ -178,7 +222,7 @@ for (const model of models) {
     r.error = 'sunucu hazir olmadi (Foundry cevrimdisi ya da model yuklenemedi)';
     console.log(`      HATA: ${r.error}\n`);
     await stopServer(child, port);
-    results.push(r);
+    record(r);
     continue;
   }
 
@@ -218,7 +262,7 @@ for (const model of models) {
   const unloadError = await foundryModel('unload', model);
   console.log(unloadError ? `      bellekten atilamadi: ${unloadError}\n` : '      bellekten atildi\n');
 
-  results.push(r);
+  record(r);
 }
 
 // ------------------------------------------------------------------ rapor
@@ -320,5 +364,13 @@ fs.writeFileSync(
 
 console.log(`  Matris yazildi: ${path.relative(ROOT, out)}`);
 console.log(`  Ham sonuclar  : ${path.relative(ROOT, raw)}\n`);
+
+// Matris yazildi; ara kayit artik gereksiz. Silinmezse bir sonraki kosum
+// eski sonuclari devralip yeniden olcum yapmaz.
+try {
+  fs.rmSync(CHECKPOINT, { force: true });
+} catch {
+  // Silinemezse COMPARE_FRESH=1 ile ezilebilir.
+}
 
 process.exit(0);

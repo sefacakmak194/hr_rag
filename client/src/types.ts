@@ -70,3 +70,18 @@ export interface CorpusAudit {
   findings: CorpusFinding[];
   summary: { yuksek: number; orta: number; bilgi: number };
 }
+
+/** Oturum acmis kullanici. */
+export interface SessionUser {
+  username: string;
+  role: 'calisan' | 'ik' | 'yonetici';
+}
+
+/** `/api/auth/status` yaniti. */
+export interface AuthStatus {
+  /** Hic hesap yoksa true: giris yerine ilk kurulum ekrani gosterilir. */
+  needsSetup: boolean;
+  authenticated: boolean;
+  user: SessionUser | null;
+  sessionHours: number;
+}

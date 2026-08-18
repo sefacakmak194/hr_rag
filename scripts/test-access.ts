@@ -224,6 +224,91 @@ check(setCookie.includes('HttpOnly'), 'cerez HttpOnly', setCookie);
 check(setCookie.includes('SameSite=Strict'), 'cerez SameSite=Strict', setCookie);
 check(setCookie.includes('Max-Age=28800'), '8 saatlik omur', setCookie);
 
+// --------------------------------------------------------------- 7) denetim
+console.log('\n  Denetim kaydi\n');
+
+const { recordAudit, listAudit, auditSummary, touchedRestricted } = await import(
+  '../server/src/services/audit.service.js'
+);
+
+// Genel dokumana erisim: soru metni SAKLANMAMALI.
+recordAudit({
+  principal: calisan,
+  question: 'Mobbing şikayetini nasıl yaparım?',
+  citations: [{ doc: 'izin.md', section: 'Madde 1: Yıllık İzin' }],
+  answered: true,
+  durationMs: 900,
+});
+
+// Kisitli dokumana erisim: soru metni SAKLANMALI.
+recordAudit({
+  principal: ik,
+  question: 'Üst yönetim ikramiyesi ne kadar?',
+  resolvedQuery: 'üst yönetim ikramiyesi tutarı',
+  citations: [{ doc: 'ucret_skalasi.md', section: 'Madde 1: İkramiye' }],
+  answered: true,
+  durationMs: 1200,
+});
+
+// Alaka kapisina takilan soru da yazilmali.
+recordAudit({
+  principal: calisan,
+  question: 'Hava durumu nasıl?',
+  citations: [],
+  answered: false,
+  durationMs: 120,
+});
+
+check(
+  !touchedRestricted(db, [{ doc: 'izin.md', section: 'Madde 1: Yıllık İzin' }]),
+  'genel dokuman kisitli sayilmiyor',
+);
+check(
+  touchedRestricted(db, [{ doc: 'ucret_skalasi.md', section: 'Madde 1: İkramiye' }]),
+  'kisitli dokuman tespit ediliyor',
+);
+
+const yoneticiGoruntu = listAudit(yonetici, { limit: 50 });
+check(yoneticiGoruntu.length === 3, `yonetici 3 satirin hepsini goruyor (${yoneticiGoruntu.length})`);
+
+// EN HASSAS KURAL: calisanin mobbing sorusu kayda GECMEMELI.
+const mobbing = yoneticiGoruntu.find((r) => r.citations.some((c) => c.doc === 'izin.md'));
+check(
+  mobbing?.question === null,
+  'genel dokumana erisimde soru metni NULL',
+  `bulunan: ${JSON.stringify(mobbing?.question)}`,
+);
+
+const ikramiye = yoneticiGoruntu.find((r) => r.citations.some((c) => c.doc === 'ucret_skalasi.md'));
+check(
+  ikramiye?.question === 'Üst yönetim ikramiyesi ne kadar?',
+  'kisitli dokumana erisimde soru metni SAKLANIYOR',
+  `bulunan: ${JSON.stringify(ikramiye?.question)}`,
+);
+
+const kapiyaTakilan = yoneticiGoruntu.find((r) => !r.answered);
+check(kapiyaTakilan !== undefined, 'alaka kapisina takilan soru da denetime yazildi');
+check(kapiyaTakilan?.question === null, 'kapiya takilan soruda da metin saklanmiyor (alinti yok)');
+
+// Gorunurluk: calisan yalnizca KENDI satirlarini gorur.
+const calisanGoruntu = listAudit(calisan, { limit: 50 });
+check(calisanGoruntu.length === 2, `calisan kendi 2 satirini goruyor (${calisanGoruntu.length})`);
+check(
+  calisanGoruntu.every((r) => r.username === 'calisan'),
+  'calisan baskasinin satirini goremiyor',
+  calisanGoruntu.map((r) => r.username).join(','),
+);
+check(
+  !calisanGoruntu.some((r) => r.citations.some((c) => c.doc === 'ucret_skalasi.md')),
+  'ik kullanicisinin kisitli erisimi calisana gorunmuyor',
+);
+
+const ozet = auditSummary(yonetici);
+check(ozet.total === 3 && ozet.unanswered === 1 && ozet.users === 2, `ozet: ${JSON.stringify(ozet)}`);
+
+const calisanOzet = auditSummary(calisan);
+check(calisanOzet.total === 2, `calisan ozeti yalnizca kendi satirlari (${calisanOzet.total})`);
+
 db.close();
 try {
   fs.rmSync(dir, { recursive: true, force: true });

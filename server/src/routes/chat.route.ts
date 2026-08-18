@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { generateQueryEmbedding } from '../services/embedding.service.js';
 import { queryTopKChunks, findSectionText } from '../services/vectorStore.service.js';
 import { requireAuth } from '../middleware/session.js';
+import { recordAudit } from '../services/audit.service.js';
 import type { Principal } from '../services/identity.service.js';
 import { classifyIntent } from '../services/intent.service.js';
 import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
@@ -71,6 +72,28 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
   // requireAuth gectiyse kimlik kesin var.
   const principal = req.principal as Principal;
   const { message, sessionId } = req.body ?? {};
+  const startedAt = Date.now();
+
+  /**
+   * Denetim satirini yazar. HER cikis noktasindan TAM BIR KEZ cagrilir —
+   * sprintin cikis olcutu bu ("her yanit tam olarak bir denetim satiri
+   * uretiyor"). Yazim asla firlatmaz; denetim hatasi kullanicinin yanitini
+   * kaybettirmemeli.
+   */
+  const audit = (
+    citations: { doc: string; section: string }[],
+    answered: boolean,
+    resolvedQuery?: string,
+  ) => {
+    recordAudit({
+      principal,
+      question: typeof message === 'string' ? message : '',
+      resolvedQuery,
+      citations,
+      answered,
+      durationMs: Date.now() - startedAt,
+    });
+  };
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'Sorgu boş olamaz.' });
@@ -126,6 +149,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     sendDetails(citations);
     res.write('data: [DONE]\n\n');
     recordTurn(session.id, { question: message, resolvedQuestion, answer: text, citations });
+    audit(citations, true, resolvedQuestion !== message ? resolvedQuestion : undefined);
     return res.end();
   };
 
@@ -214,6 +238,10 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
         answer: NO_CONTEXT_RESPONSE,
         citations: [],
       });
+      // answered = false: soru alaka kapisina takildi, mevzuattan yanit
+      // uretilmedi. Bu satirlar haftalik "politika bosluğu" raporunun
+      // kaynagi olacak (Sprint 4).
+      audit([], false, query !== message ? query : undefined);
       return res.end();
     }
 
@@ -372,6 +400,11 @@ ${SYSTEM_PROMPT_RULES}`;
       answer,
       citations: citations.map((c) => ({ doc: c.doc, section: c.section })),
     });
+    audit(
+      citations.map((c) => ({ doc: c.doc, section: c.section })),
+      true,
+      query !== message ? query : undefined,
+    );
     res.end();
   } catch (error) {
     console.error('Chat Error:', error);
@@ -387,6 +420,10 @@ ${SYSTEM_PROMPT_RULES}`;
       'error',
     );
     res.write('data: [DONE]\n\n');
+    // Hata da denetime yazilir: "sistem o an cevap veremedi" izi kalmali.
+    // Aksi halde denetim kaydinda sessiz boşluklar olusur ve "o gun soru
+    // sorulmamis" ile "sistem cevap verememis" ayirt edilemez.
+    audit([], false);
     res.end();
   }
 });

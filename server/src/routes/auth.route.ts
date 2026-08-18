@@ -18,6 +18,7 @@ import {
   SESSION_HOURS,
   type Role,
 } from '../services/identity.service.js';
+import { listAudit, auditSummary } from '../services/audit.service.js';
 import {
   setSessionCookie,
   clearSessionCookie,
@@ -150,6 +151,24 @@ router.post('/auth/users', requireAuth, (req: Request, res: Response) => {
       error: message.includes('UNIQUE') ? 'Bu kullanıcı adı zaten kayıtlı.' : message,
     });
   }
+});
+
+/**
+ * Denetim kaydi.
+ *
+ * Gorunurluk kurali servis icinde uygulanir (yonetici tumunu, diger roller
+ * kendi satirlarini): uc bunu atlayamasin diye.
+ */
+router.get('/audit', requireAuth, (req: Request, res: Response) => {
+  const principal = req.principal as NonNullable<Request['principal']>;
+  const limit = Number(req.query.limit ?? 100);
+  const username = typeof req.query.username === 'string' ? req.query.username : undefined;
+
+  res.json({
+    summary: auditSummary(principal),
+    scope: principal.role === 'yonetici' ? 'tumu' : 'kendi',
+    rows: listAudit(principal, { limit: Number.isFinite(limit) ? limit : 100, username }),
+  });
 });
 
 export { attachPrincipal };

@@ -100,8 +100,27 @@ export const FOUNDRY_BASE_URL_OVERRIDE = process.env.FOUNDRY_BASE_URL ?? null;
 /** Kesif basarisiz olursa denenecek sartname varsayilani. */
 export const FOUNDRY_FALLBACK_BASE_URL = 'http://localhost:5272/v1';
 
-/** Katalogdaki ad `phi-3.5-mini`'dir (sartnamedeki `-instruct` soneki yoktur). */
-export const FOUNDRY_MODEL = process.env.FOUNDRY_MODEL ?? 'phi-3.5-mini';
+/**
+ * Varsayilan model — SECIM OLCULDU, sezgiyle belirlenmedi.
+ *
+ * `npm run compare`, 48 vaka, sicaklik 0 (data/MODEL-KARSILASTIRMA.md):
+ *
+ *   qwen2.5-1.5b-instruct-cuda-gpu    47/48   ort  0.4s   en yavas  1.4s
+ *   qwen2.5-7b-instruct-generic-cpu   48/48   ort 26.0s   en yavas 58.1s
+ *   qwen3.5-2b-text-cuda-gpu          31/48   ort  3.6s   en yavas 12.5s
+ *   Phi-3.5-mini-instruct-cuda-gpu    41 vakada 13 hata (tamamlanamadi)
+ *
+ * 7B tam puan aliyor ama en yavas vakasi 58 saniye — urun olarak sunulamaz.
+ * 1.5B tek vaka farkla 65 kat hizli; secim bu.
+ *
+ * Onceki varsayilan `phi-3.5-mini` idi ve olcumde EN KOTU cikan modeldi;
+ * .env.local her makinede ezdigi icin fark edilmemisti.
+ *
+ * Takma ad yerine TAM VARYANT KIMLIGI veriliyor: /v1/models onbellekteki tum
+ * varyantlari listeler ve makineye gore bir kismi bozuktur (olculdu:
+ * qwen3.5-2b-text-cuda-gpu bu makinede Turkce karakterlerde cokuyor).
+ */
+export const FOUNDRY_MODEL = process.env.FOUNDRY_MODEL ?? 'qwen2.5-1.5b-instruct-cuda-gpu';
 
 /** Backend portu. 5272 Foundry Local'e ait olduğu icin 5273 kullanilir. */
 export const SERVER_PORT = Number(process.env.PORT ?? 5273);

@@ -9,125 +9,88 @@ her modelde aynıdır; modeller arasında ayırt edici olan "LLM vakaları" süt
 
 | Model | Skor | Başarım | LLM vakaları | Ortalama | Medyan | En yavaş |
 |---|---|---|---|---|---|---|
-| `qwen2.5-1.5b-instruct-cuda-gpu` | 48/48 | %100.0 | 33/33 | 0.5s | 0.7s | 1.9s |
-| `qwen2.5-7b-instruct-generic-cpu` | 15/48 | %31.3 | 2/33 | 0.1s | 0.1s | 0.1s |
-| `Phi-3.5-mini-instruct-cuda-gpu` | 15/48 | %31.3 | 2/33 | 0.0s | 0.1s | 0.1s |
-| `Phi-3.5-mini-instruct-generic-cpu` | 15/48 | %31.3 | 2/33 | 0.1s | 0.1s | 0.1s |
+| `qwen2.5-1.5b-instruct-cuda-gpu` | 47/48 | %97.9 | 30/31 | 0.4s | 0.6s | 1.4s |
+| `qwen3.5-2b-text-cuda-gpu` | 31/48 | %64.6 | 14/31 | 3.6s | 1.7s | 12.5s |
+| `qwen2.5-7b-instruct-generic-cpu` | 48/48 | %100.0 | 31/31 | 26.0s | 35.0s | 58.1s |
 
-## `qwen2.5-1.5b-instruct-cuda-gpu`
+## Karar: `qwen2.5-1.5b-instruct-cuda-gpu`
+
+Varsayılan model bu ölçümle belirlendi (`constants.ts` → `FOUNDRY_MODEL`).
+Önceki varsayılan `phi-3.5-mini` idi ve ölçümde en kötü çıkan modeldi; her
+makinede `.env.local` ezdiği için fark edilmemişti.
+
+**7B tam puan alıyor ama ürün olamaz.** 48/48 karşılığında ortalama 26 saniye,
+en yavaş vaka 58 saniye. 1.5B tek vaka farkla **65 kat** hızlı. Kullanıcı
+"kaç gün izin hakkım var" diye sorup bir dakika bekleyemez.
+
+**Büyüklük belirleyici değil.** 2.1 GB'lık Phi, 1.3 GB'lık qwen'in çok
+gerisinde kaldı. Ayırt edici olan parametre sayısı değil Türkçe yetkinliği.
+Ürün açısından iyi haber: müşteri donanım gereksinimi düşük kalıyor
+(ölçüm makinesi 4 GB VRAM'li RTX 3050 Laptop).
+
+**7B'nin 48/48'i bir şey daha söylüyor:** `amb-4` vakası çözülebilir bir
+sorudur. 1.5B'nin oradaki hatası retrieval hatası değil, model kapasitesi
+sınırı — doğru bölüm getiriliyor, model yanlış cümleden cevaplıyor.
+
+### Kısmi ölçüm: `Phi-3.5-mini-instruct-cuda-gpu`
+
+Bu model **tamamlanamadı**, tabloda yer almıyor. 48 vakanın 41'i koşuldu ve
+**13 hata** verdi; ardından Foundry Local arka plan süreci çöktü.
+
+Süre ölçümleri de kullanılamaz durumdaydı: ilk ~30 vaka normal hızda geçti,
+sonrasında vaka başına ~100 saniyeye çıktı. Bu daemon yorulmasıdır, modelin
+karakteristiği değil — "Phi yavaştır" demek ölçüme iftira olurdu.
+
+Sonuç yine de karar için yeterli: aynı vakalarda qwen2.5-1.5b 1 hata verdi.
+
+### Bozuk varyant: `qwen3.5-2b-text-cuda-gpu`
+
+31/48'i "qwen3.5 kötü bir model" diye okumak yanlış olur. Hataların çoğunda
+model anlamsız çıktı üretti ve bozulma **Türkçeye özgü harflerde** yoğunlaştı:
+
+```
+Doğum yardımı ne kadar?          → ÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇ
+Özlük dosyaları kaç yıl saklanır? → ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ
+Yol desteği aylık ne kadar?      → TopTopTopTopTopTop
+```
+
+Bu, ONNX derlemesinin bu makinede bozuk olduğunu gösterir. Ölçülen şey modelin
+yeteneği değil, **bu varyantın bu makinedeki durumu**.
+
+Bu bulgu bir ürün hatası da ortaya çıkardı: bozuk yanıt kalkanı iki bozulma
+biçimini de kaçırıyordu (tek harf tekrarı ve boşluksuz sözcük döngüsü). İkisi
+için de kural eklendi, `test:guard` paketiyle ölçülüyor.
+
+---
+
+## `qwen2.5-1.5b-instruct-cuda-gpu` — başarısız vakalar
+
+| Vaka | Soru | Neden | Yanıt |
+|---|---|---|---|
+| amb-4 | Bordro itirazımı kaç gün içinde yapmalıyım? | eksik: 15 | En az 10 iş günü içinde sonucunu elde edelim. |
+
+## `qwen3.5-2b-text-cuda-gpu` — başarısız vakalar
+
+| Vaka | Soru | Neden | Yanıt |
+|---|---|---|---|
+| num-4 | Analık izni toplam kaç hafta? | baglam sizintisi: .md | K'nın 10_dogum_analik_ve_ebeveyn_haklari.md dosyasındaki Madde 1 gereği, kadın çalışanlara doğumdan önce 8 hafta ve doğu |
+| num-6 | Doğum yardımı ne kadar? | eksik: 15.000 | ÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇ |
+| num-7 | Yemek kartına günlük ne kadar yükleniyor? | eksik: 250 | T. |
+| num-8 | Otel konaklama üst limiti gecelik ne kadar? | eksik: 3.500 | ŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞŞ |
+| num-9 | Haftada kaç gün uzaktan çalışabilirim? | eksik: 2 | Ş |
+| num-12 | Deneme süresi kaç ay? | eksik: 2 | Y |
+| num-13 | Tedarikçiden en fazla kaç TL değerinde hediye kabul edilebilir? | eksik: 1.000 | ÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇ |
+| num-15 | Gece vardiyası zammı yüzde kaç? | eksik: 20 | GeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGeGe |
+| amb-1 | Evlilik yardımı ne kadar? | eksik: 10.000 | ÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇ |
+| amb-2 | Yol desteği aylık ne kadar? | eksik: 1.500 | TopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTopTop |
+| amb-5 | Referans primi ne kadar? | eksik: 5.000 | Ş |
+| amb-6 | Olumsuz sonuçlanan aday başvuruları en fazla kaç yıl saklanır? | eksik: 2 yıl | İİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİİ |
+| amb-7 | Özlük dosyaları kaç yıl saklanır? | eksik: 10 yıl | ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ |
+| amb-9 | Savunma için çalışana en az kaç iş günü süre tanınır? | eksik: 3 iş günü | ÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇ |
+| amb-10 | Performans sonucuna kaç iş günü içinde itiraz edilir? | eksik: 10 iş günü | PerformansPerformansPerformansPerformansPerformansPerformansPerformansPerformansPerformansPerformansPerformansPerformans |
+| amb-12 | Ücretsiz izin talebini en az kaç gün önce yapmalıyım? | eksik: 15 gün | ÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇÇ |
+| amb-13 | Sertifika programı sonrası kaç ay çalışma taahhüdü verilir? | baglam sizintisi: .md | S 14/10/2023 (14_egitim_ve_kariyer_gelisimi.md) mevzuatına göre, sertifika programı sonrası çalışan eğitimin tamamlanmas |
+
+## `qwen2.5-7b-instruct-generic-cpu`
 
 Tüm vakalar geçti.
-
-## `qwen2.5-7b-instruct-generic-cpu` — başarısız vakalar
-
-| Vaka | Soru | Neden | Yanıt |
-|---|---|---|---|
-| spec-2 | Harcırah masraf fişlerimi kaç gün içinde yüklemeliyim? | hata: İşlem sırasında bir hata oluştu. | eksik: 5 |  |
-| num-1 | Öğle molası kaç saat ve hangi saatler arasında? | hata: İşlem sırasında bir hata oluştu. | eksik: 12:30, 13:30 |  |
-| num-2 | Babalık izni kaç gün? | hata: İşlem sırasında bir hata oluştu. | eksik: 5 |  |
-| num-3 | Süt izni günde kaç saat? | hata: İşlem sırasında bir hata oluştu. | eksik: 1,5 |  |
-| num-4 | Analık izni toplam kaç hafta? | hata: İşlem sırasında bir hata oluştu. | eksik: 16 |  |
-| num-5 | Kreş desteği aylık ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 4.000 |  |
-| num-6 | Doğum yardımı ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 15.000 |  |
-| num-7 | Yemek kartına günlük ne kadar yükleniyor? | hata: İşlem sırasında bir hata oluştu. | eksik: 250 |  |
-| num-8 | Otel konaklama üst limiti gecelik ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 3.500 |  |
-| num-9 | Haftada kaç gün uzaktan çalışabilirim? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 |  |
-| num-10 | İş kazası kaç gün içinde SGK'ya bildirilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 |  |
-| num-11 | Kamera kayıtları kaç gün saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 30 |  |
-| num-12 | Deneme süresi kaç ay? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 |  |
-| num-13 | Tedarikçiden en fazla kaç TL değerinde hediye kabul edilebilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 1.000 |  |
-| num-14 | Yıllık kişisel gelişim bütçesi ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 25.000 |  |
-| num-15 | Gece vardiyası zammı yüzde kaç? | hata: İşlem sırasında bir hata oluştu. | eksik: 20 |  |
-| amb-1 | Evlilik yardımı ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 10.000 |  |
-| amb-2 | Yol desteği aylık ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 1.500 |  |
-| amb-3 | Yıllık toplam fazla mesai en fazla kaç saat olabilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 270 |  |
-| amb-4 | Bordro itirazımı kaç gün içinde yapmalıyım? | hata: İşlem sırasında bir hata oluştu. | eksik: 15 |  |
-| amb-5 | Referans primi ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 5.000 |  |
-| amb-6 | Olumsuz sonuçlanan aday başvuruları en fazla kaç yıl saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 yıl |  |
-| amb-7 | Özlük dosyaları kaç yıl saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 10 yıl |  |
-| amb-8 | Disiplin cezasına kaç iş günü içinde itiraz edebilirim? | hata: İşlem sırasında bir hata oluştu. | eksik: 7 iş günü |  |
-| amb-9 | Savunma için çalışana en az kaç iş günü süre tanınır? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 iş günü |  |
-| amb-10 | Performans sonucuna kaç iş günü içinde itiraz edilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 10 iş günü |  |
-| amb-11 | Tehlikeli iş yerlerinde İSG eğitimi kaç yılda bir tekrarlanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 yıl |  |
-| amb-12 | Ücretsiz izin talebini en az kaç gün önce yapmalıyım? | hata: İşlem sırasında bir hata oluştu. | eksik: 15 gün |  |
-| amb-13 | Sertifika programı sonrası kaç ay çalışma taahhüdü verilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 24 ay |  |
-| amb-14 | Sağlık raporunu bitiminden sonra kaç iş günü içinde yüklemeliyim? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 iş günü |  |
-| multi-3 | 2 yıllık olsam? | eksik: 6 hafta | Şirket içi mevzuat dokümanlarında bu konu hakkında bilgi bulunmamaktadır. Lütfen İK departmanı ile doğrudan iletişime ge |
-| multi-4 | Kreş desteği ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 4.000 |  |
-| multi-6 | ne konuşuyorduk? | eksik: Kreş desteği | Henüz bir konu konuşmadık. İK politikalarıyla ilgili sorunuzu yazabilirsiniz. |
-
-## `Phi-3.5-mini-instruct-cuda-gpu` — başarısız vakalar
-
-| Vaka | Soru | Neden | Yanıt |
-|---|---|---|---|
-| spec-2 | Harcırah masraf fişlerimi kaç gün içinde yüklemeliyim? | hata: İşlem sırasında bir hata oluştu. | eksik: 5 |  |
-| num-1 | Öğle molası kaç saat ve hangi saatler arasında? | hata: İşlem sırasında bir hata oluştu. | eksik: 12:30, 13:30 |  |
-| num-2 | Babalık izni kaç gün? | hata: İşlem sırasında bir hata oluştu. | eksik: 5 |  |
-| num-3 | Süt izni günde kaç saat? | hata: İşlem sırasında bir hata oluştu. | eksik: 1,5 |  |
-| num-4 | Analık izni toplam kaç hafta? | hata: İşlem sırasında bir hata oluştu. | eksik: 16 |  |
-| num-5 | Kreş desteği aylık ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 4.000 |  |
-| num-6 | Doğum yardımı ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 15.000 |  |
-| num-7 | Yemek kartına günlük ne kadar yükleniyor? | hata: İşlem sırasında bir hata oluştu. | eksik: 250 |  |
-| num-8 | Otel konaklama üst limiti gecelik ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 3.500 |  |
-| num-9 | Haftada kaç gün uzaktan çalışabilirim? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 |  |
-| num-10 | İş kazası kaç gün içinde SGK'ya bildirilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 |  |
-| num-11 | Kamera kayıtları kaç gün saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 30 |  |
-| num-12 | Deneme süresi kaç ay? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 |  |
-| num-13 | Tedarikçiden en fazla kaç TL değerinde hediye kabul edilebilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 1.000 |  |
-| num-14 | Yıllık kişisel gelişim bütçesi ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 25.000 |  |
-| num-15 | Gece vardiyası zammı yüzde kaç? | hata: İşlem sırasında bir hata oluştu. | eksik: 20 |  |
-| amb-1 | Evlilik yardımı ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 10.000 |  |
-| amb-2 | Yol desteği aylık ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 1.500 |  |
-| amb-3 | Yıllık toplam fazla mesai en fazla kaç saat olabilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 270 |  |
-| amb-4 | Bordro itirazımı kaç gün içinde yapmalıyım? | hata: İşlem sırasında bir hata oluştu. | eksik: 15 |  |
-| amb-5 | Referans primi ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 5.000 |  |
-| amb-6 | Olumsuz sonuçlanan aday başvuruları en fazla kaç yıl saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 yıl |  |
-| amb-7 | Özlük dosyaları kaç yıl saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 10 yıl |  |
-| amb-8 | Disiplin cezasına kaç iş günü içinde itiraz edebilirim? | hata: İşlem sırasında bir hata oluştu. | eksik: 7 iş günü |  |
-| amb-9 | Savunma için çalışana en az kaç iş günü süre tanınır? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 iş günü |  |
-| amb-10 | Performans sonucuna kaç iş günü içinde itiraz edilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 10 iş günü |  |
-| amb-11 | Tehlikeli iş yerlerinde İSG eğitimi kaç yılda bir tekrarlanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 yıl |  |
-| amb-12 | Ücretsiz izin talebini en az kaç gün önce yapmalıyım? | hata: İşlem sırasında bir hata oluştu. | eksik: 15 gün |  |
-| amb-13 | Sertifika programı sonrası kaç ay çalışma taahhüdü verilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 24 ay |  |
-| amb-14 | Sağlık raporunu bitiminden sonra kaç iş günü içinde yüklemeliyim? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 iş günü |  |
-| multi-3 | 2 yıllık olsam? | eksik: 6 hafta | Şirket içi mevzuat dokümanlarında bu konu hakkında bilgi bulunmamaktadır. Lütfen İK departmanı ile doğrudan iletişime ge |
-| multi-4 | Kreş desteği ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 4.000 |  |
-| multi-6 | ne konuşuyorduk? | eksik: Kreş desteği | Henüz bir konu konuşmadık. İK politikalarıyla ilgili sorunuzu yazabilirsiniz. |
-
-## `Phi-3.5-mini-instruct-generic-cpu` — başarısız vakalar
-
-| Vaka | Soru | Neden | Yanıt |
-|---|---|---|---|
-| spec-2 | Harcırah masraf fişlerimi kaç gün içinde yüklemeliyim? | hata: İşlem sırasında bir hata oluştu. | eksik: 5 |  |
-| num-1 | Öğle molası kaç saat ve hangi saatler arasında? | hata: İşlem sırasında bir hata oluştu. | eksik: 12:30, 13:30 |  |
-| num-2 | Babalık izni kaç gün? | hata: İşlem sırasında bir hata oluştu. | eksik: 5 |  |
-| num-3 | Süt izni günde kaç saat? | hata: İşlem sırasında bir hata oluştu. | eksik: 1,5 |  |
-| num-4 | Analık izni toplam kaç hafta? | hata: İşlem sırasında bir hata oluştu. | eksik: 16 |  |
-| num-5 | Kreş desteği aylık ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 4.000 |  |
-| num-6 | Doğum yardımı ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 15.000 |  |
-| num-7 | Yemek kartına günlük ne kadar yükleniyor? | hata: İşlem sırasında bir hata oluştu. | eksik: 250 |  |
-| num-8 | Otel konaklama üst limiti gecelik ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 3.500 |  |
-| num-9 | Haftada kaç gün uzaktan çalışabilirim? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 |  |
-| num-10 | İş kazası kaç gün içinde SGK'ya bildirilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 |  |
-| num-11 | Kamera kayıtları kaç gün saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 30 |  |
-| num-12 | Deneme süresi kaç ay? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 |  |
-| num-13 | Tedarikçiden en fazla kaç TL değerinde hediye kabul edilebilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 1.000 |  |
-| num-14 | Yıllık kişisel gelişim bütçesi ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 25.000 |  |
-| num-15 | Gece vardiyası zammı yüzde kaç? | hata: İşlem sırasında bir hata oluştu. | eksik: 20 |  |
-| amb-1 | Evlilik yardımı ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 10.000 |  |
-| amb-2 | Yol desteği aylık ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 1.500 |  |
-| amb-3 | Yıllık toplam fazla mesai en fazla kaç saat olabilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 270 |  |
-| amb-4 | Bordro itirazımı kaç gün içinde yapmalıyım? | hata: İşlem sırasında bir hata oluştu. | eksik: 15 |  |
-| amb-5 | Referans primi ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 5.000 |  |
-| amb-6 | Olumsuz sonuçlanan aday başvuruları en fazla kaç yıl saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 yıl |  |
-| amb-7 | Özlük dosyaları kaç yıl saklanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 10 yıl |  |
-| amb-8 | Disiplin cezasına kaç iş günü içinde itiraz edebilirim? | hata: İşlem sırasında bir hata oluştu. | eksik: 7 iş günü |  |
-| amb-9 | Savunma için çalışana en az kaç iş günü süre tanınır? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 iş günü |  |
-| amb-10 | Performans sonucuna kaç iş günü içinde itiraz edilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 10 iş günü |  |
-| amb-11 | Tehlikeli iş yerlerinde İSG eğitimi kaç yılda bir tekrarlanır? | hata: İşlem sırasında bir hata oluştu. | eksik: 2 yıl |  |
-| amb-12 | Ücretsiz izin talebini en az kaç gün önce yapmalıyım? | hata: İşlem sırasında bir hata oluştu. | eksik: 15 gün |  |
-| amb-13 | Sertifika programı sonrası kaç ay çalışma taahhüdü verilir? | hata: İşlem sırasında bir hata oluştu. | eksik: 24 ay |  |
-| amb-14 | Sağlık raporunu bitiminden sonra kaç iş günü içinde yüklemeliyim? | hata: İşlem sırasında bir hata oluştu. | eksik: 3 iş günü |  |
-| multi-3 | 2 yıllık olsam? | eksik: 6 hafta | Şirket içi mevzuat dokümanlarında bu konu hakkında bilgi bulunmamaktadır. Lütfen İK departmanı ile doğrudan iletişime ge |
-| multi-4 | Kreş desteği ne kadar? | hata: İşlem sırasında bir hata oluştu. | eksik: 4.000 |  |
-| multi-6 | ne konuşuyorduk? | eksik: Kreş desteği | Henüz bir konu konuşmadık. İK politikalarıyla ilgili sorunuzu yazabilirsiniz. |

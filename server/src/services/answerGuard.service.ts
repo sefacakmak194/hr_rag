@@ -70,7 +70,24 @@ export function inspectAnswer(answer: string): DegenerateVerdict {
     return { degenerate: true, reason: 'ayni harf pes pese tekrarlandi' };
   }
 
-  // 4) Ayni cumle birden fazla kez.
+  // 4) Ayni sozcuk parcasi BOSLUKSUZ 4+ kez: jeton dongusu.
+  //
+  //     Olculdu — ayni bozuk varyant "Yol destegi aylik ne kadar?" sorusuna
+  //     "TopTopTopTop...", "Performans sonucuna..." sorusuna ise
+  //     "PerformansPerformansPerformans..." donuyor.
+  //
+  //     Ustteki harf kurali bunu KACIRIR (tekrarlanan birim tek harf degil),
+  //     ucgen kurali da kacirir (bosluk yok, tek "sozcuk" sayiliyor). Ucuncu
+  //     bir bozulma bicimi.
+  //
+  //     Yalnizca HARF dizileri araniyor: "20202020" gibi sayilar ya da tarih
+  //     bicimleri yanlislikla bozuk sayilmasin. Normal Turkce metinde bir
+  //     sozcuk bosluksuz ard arda tekrarlanmaz.
+  if (/(\p{L}{2,20}?)\1{3,}/u.test(text)) {
+    return { degenerate: true, reason: 'ayni dizi bosluksuz tekrarlandi' };
+  }
+
+  // 5) Ayni cumle birden fazla kez.
   const sentences = text
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim().toLocaleLowerCase('tr-TR'))

@@ -37,6 +37,14 @@ const degenerate: { text: string; label: string }[] = [
     text: 'Doğum yardımı ŞŞŞŞŞŞŞŞŞŞŞŞ TL olarak ödenir.',
   },
   {
+    label: 'bosluksuz sozcuk dongusu — "TopTop..." (olculdu)',
+    text: 'Top'.repeat(40),
+  },
+  {
+    label: 'bosluksuz sozcuk dongusu — "Performans..." (olculdu)',
+    text: 'Performans'.repeat(12),
+  },
+  {
     label: 'donguye girmis uretim (olculdu)',
     text:
       'EVNETE CALIŞMA HAKIMKI BİTTİRMEDİKTIRIR. EVNETE CALIŞMA HAKIMLIIZDA ' +
@@ -70,6 +78,11 @@ const healthy: { text: string; label: string }[] = [
     text: 'Yıllık izin talebi izin formuyla yapılır ve izin onayı yöneticiden alınır.',
   },
   { label: 'cok kisa metin — kalkan bilincli olarak susar', text: '14 gün.' },
+  // Turkce'de ikileme yaygin ("yavaş yavaş", "teker teker"). BOSLUKLU tekrar
+  // normaldir; bosluksuz tekrar bozulmadir. Kural bu ikisini ayirmali.
+  { label: 'ikileme — bosluklu tekrar normal', text: 'Ödemeler teker teker, yavaş yavaş yapılır.' },
+  // Sayi ve tarih bicimleri harf olmadigi icin kurala takilmamali.
+  { label: 'tekrarli rakamlar', text: 'Hesap numarası 20202020 ve tutar 1.000.000 TL.' },
 ];
 
 console.log('\n  Bozuk sayilmasi gereken ciktilar\n');
@@ -90,6 +103,16 @@ for (const c of healthy) {
 console.log('\n  Esik davranisi\n');
 check(inspectAnswer('Aaaaaaaaaa bir yanıt değildir bu.').degenerate, '10 tekrar bozuk sayiliyor');
 check(!inspectAnswer('Anne ve babaya izin verilir.').degenerate, 'cift harf (nn) temiz sayiliyor');
+check(!inspectAnswer('İzinizin bitiminde bilgilendirme yapılır.').degenerate, 'ic ice heceler temiz');
+
+// Geri referansli regex uzun metinde geri izleme patlamasi yapabilir. Kalkan
+// her yanitta calisiyor; yavaslamasi kullaniciya dogrudan yansir.
+console.log('\n  Basari suresi\n');
+const long = 'Analık izni doğumdan önce sekiz hafta ve doğumdan sonra sekiz haftadır. '.repeat(40);
+const started = Date.now();
+inspectAnswer(long);
+const ms = Date.now() - started;
+check(ms < 100, `uzun metin (${long.length} karakter) ${ms}ms'de incelendi`, 'geri izleme patlamasi olabilir');
 
 console.log(`\n  ${failures === 0 ? 'TUMU GECTI' : `${failures} test BASARISIZ`}\n`);
 process.exit(failures === 0 ? 0 : 1);

@@ -912,3 +912,14 @@ Deney anahtarları:
 `EVIDENCE_ONLY` denemesi öğreticiydi: işaretli cümle tek başına yetmiyor. İki vaka
 tam metni gerektiriyor — *"Öğle molası kaç saat ve hangi saatler arasında?"* iki ayrı
 olguyu aynı bölümden istiyor. Yani doğru tasarım "işaretle **ve** tam metni de ver".
+
+---
+
+## Lisans
+
+Tescilli — tüm hakları saklıdır. Ayrıntı ve üçüncü taraf bildirimleri için
+[LICENSE](LICENSE).
+
+Değerlendirme, inceleme ve teknik denetim amacıyla çalıştırmak serbesttir;
+üretim kullanımı ayrı bir yazılı lisans gerektirir. Depoda taşınan
+`tur.traineddata` ve tüm bağımlılıklar kendi lisanslarına tabidir.

@@ -2,6 +2,7 @@
   "name": "private-hr-rag-server",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "description": "Air-gapped RAG backend: local embeddings + local vector index + Foundry Local SSE streaming",
   "scripts": {

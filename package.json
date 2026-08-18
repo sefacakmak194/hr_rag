@@ -2,6 +2,7 @@
   "name": "private-hr-rag",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "description": "Private Enterprise HR & Policy Local RAG Assistant — 100% air-gapped, Microsoft Foundry Local",
   "scripts": {

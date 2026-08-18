@@ -12,6 +12,7 @@ import {
 } from '../config/constants.js';
 import { cosineSimilarity } from './embedding.service.js';
 import { Bm25Index } from './lexical.service.js';
+import { ensureIdentitySchema } from './identity.service.js';
 
 export interface ChunkRecord {
   docTitle: string;
@@ -59,6 +60,10 @@ export function getDb(): DatabaseSync {
       );
       CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks(doc_title);
     `);
+
+    // Kimlik, erisim etiketi ve denetim tablolari (Sprint 1). Ayri dosyada
+    // tutuluyor; burasi vektor deposu, orasi kimlik katmani.
+    ensureIdentitySchema(db);
   }
   return db;
 }

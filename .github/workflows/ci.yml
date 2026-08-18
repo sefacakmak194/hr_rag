@@ -6,14 +6,23 @@
 # Bunlar yerelde calistirilir, sonuclari data/ altinda belgelenir.
 name: CI
 
+# Push yalnizca ana dalda tetikler; dallar PR uzerinden olculur. Filtresiz
+# birakilirsa ayni PR icin iki kosum birden baslar (push + pull_request) ve
+# private depoda dakika kotasi bosa gider.
 on:
   push:
+    branches: [main]
   pull_request:
 
-# Ayni dal icin ust uste gelen kosumlari iptal et.
+# Ust uste gelen kosumlari iptal et — AMA ana dalda ETME.
+#
+# Ana dalda her commit'in kendi sonucu olmali: bir sey bozuldugunda hangi
+# commit'in bozdugunu ancak boyle bilirsin. Ust uste iptal edilen kosumlar
+# ayrica arayuzde hata gibi gorunur ("The operation was canceled") ve gercek
+# bir kirilmayi gizler.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   offline:

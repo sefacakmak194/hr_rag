@@ -156,6 +156,26 @@ hesabı (5), **ayrım** (14 — aynı maddede birden çok olgu), **çok turlu** 
 (3), sohbet (2). "Ayrım" ve "çok turlu" grupları uçtan uca ölçüm için kritiktir; ikisi de
 gerçek hatalar yakaladı.
 
+### Sürekli entegrasyon (CI)
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) her push ve PR'da çalışır:
+bağımlılıklar → tip kontrolü (sunucu **ve** `scripts/`) → istemci derlemesi →
+korpus indeksleme → 7 çevrimdışı test paketi.
+
+`eval` ve `compare` **bilinçli olarak kapsam dışı**: ikisi de çalışan bir Foundry
+Local örneği ve yerel GPU ister; barındırılan bir koşucuda kurulamaz. Bunlar
+yerelde çalıştırılır, sonuçları `data/` altında belgelenir.
+
+İki ayrıntı sessiz kırılmayı önlüyor:
+
+- **Örnek dosyalar depoda izleniyor** (`scripts/fixtures/`). Üretici betik taranmış
+  PDF için Chrome'a ve Windows yollarına bağlı; CI'da üretilemez. Üretilemediğinde
+  `test:formats` kırmızı yanmaz, blokları **atlar** — yani DOCX ve OCR hiç
+  ölçülmeden yeşil görünürdü.
+- **`.gitattributes` ikili dosyaları donuşumdan muaf tutuyor.** Depoda satır sonu
+  LF; `tur.traineddata` CRLF dönüşümünden geçerse dosya bozulur ve OCR sessizce
+  çalışmaz hale gelir.
+
 ### Ölçüm önce tekrarlanabilir olmalı
 
 `temperature` uzun süre **0.1** idi ve bu, görünmez bir kararsızlık yaratıyordu: art arda

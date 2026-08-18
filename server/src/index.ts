@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import chatRoute from './routes/chat.route.js';
 import documentsRoute from './routes/documents.route.js';
 import { checkFoundryHealth } from './services/foundryClient.service.js';
-import { countChunks, listDocuments } from './services/vectorStore.service.js';
+import { countChunks, listDocuments, SYSTEM_PRINCIPAL } from './services/vectorStore.service.js';
 import { warmupEmbeddingModel } from './services/embedding.service.js';
 import {
   SERVER_PORT,
@@ -45,7 +45,7 @@ app.get('/api/health', async (_req, res) => {
 
   try {
     indexedChunks = countChunks();
-    documents = listDocuments();
+    documents = listDocuments(SYSTEM_PRINCIPAL);
   } catch (error) {
     indexError = (error as Error).message;
   }

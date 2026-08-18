@@ -1,4 +1,4 @@
-import { countChunks, listDocuments } from './vectorStore.service.js';
+import { countChunks, listDocuments, SYSTEM_PRINCIPAL } from './vectorStore.service.js';
 
 export type IntentKind = 'greeting' | 'capability' | 'thanks' | 'farewell' | 'recap' | 'rag';
 
@@ -124,7 +124,7 @@ function capabilityResponse(): string {
   let docCount = 0;
   let chunkCount = 0;
   try {
-    docCount = listDocuments().length;
+    docCount = listDocuments(SYSTEM_PRINCIPAL).length;
     chunkCount = countChunks();
   } catch {
     /* indeks henuz olusmamis olabilir */

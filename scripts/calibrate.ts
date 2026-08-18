@@ -15,7 +15,7 @@
  * Kullanim:  cd server && npx tsx ../scripts/calibrate.ts
  */
 import { generateQueryEmbedding } from '../server/src/services/embedding.service.js';
-import { scoreAllChunks, countChunks } from '../server/src/services/vectorStore.service.js';
+import { scoreAllChunks, countChunks, SYSTEM_PRINCIPAL } from '../server/src/services/vectorStore.service.js';
 
 const inScope = [
   'Öğle molası saat kaçta?',
@@ -77,7 +77,7 @@ interface Components { vec: number[]; lex: number[] }
 /** Her sorgu icin tum parcalarin (kosinus, bm25) bilesenlerini toplar. */
 async function components(q: string): Promise<Components> {
   const vector = await generateQueryEmbedding(q);
-  const scored = scoreAllChunks(vector, q);
+  const scored = scoreAllChunks(vector, q, SYSTEM_PRINCIPAL);
   return { vec: scored.map((s) => s.vectorScore), lex: scored.map((s) => s.lexicalScore) };
 }
 

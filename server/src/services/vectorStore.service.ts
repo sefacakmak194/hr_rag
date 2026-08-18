@@ -12,7 +12,7 @@ import {
 } from '../config/constants.js';
 import { cosineSimilarity } from './embedding.service.js';
 import { Bm25Index } from './lexical.service.js';
-import { ensureIdentitySchema } from './identity.service.js';
+import { ensureIdentitySchema, labelFilter, type Principal, type Role } from './identity.service.js';
 
 export interface ChunkRecord {
   docTitle: string;
@@ -100,10 +100,16 @@ export function countChunks(): number {
   return row?.n ?? 0;
 }
 
-export function listDocuments(): { docTitle: string; chunks: number }[] {
+export function listDocuments(principal: Principal): { docTitle: string; chunks: number }[] {
+  // Korpus listesi de filtrelenir: dokuman ADI bile bilgi tasir
+  // ("ust_yonetim_ucret_skalasi.md" gibi bir baslik tek basina sizintidir).
+  const { clause, values } = labelFilter(principal);
   const rows = getDb()
-    .prepare('SELECT doc_title AS docTitle, COUNT(*) AS chunks FROM chunks GROUP BY doc_title ORDER BY doc_title')
-    .all() as { docTitle: string; chunks: number }[];
+    .prepare(
+      `SELECT c.doc_title AS docTitle, COUNT(*) AS chunks ${VISIBLE_CHUNKS} (${clause})
+       GROUP BY c.doc_title ORDER BY c.doc_title`,
+    )
+    .all(...values) as { docTitle: string; chunks: number }[];
   return rows;
 }
 
@@ -118,36 +124,87 @@ export function listDocuments(): { docTitle: string; chunks: number }[] {
  * birlestirilir; overlap nedeniyle olusan tekrarlar kabul edilir, metin
  * kullaniciya bilgi olarak gosterilir, yeniden indekslenmez.
  */
-export function findSectionText(docTitle: string, section: string): string | null {
+export function findSectionText(
+  docTitle: string,
+  section: string,
+  principal: Principal,
+): string | null {
+  // EN KRITIK FILTRE. "Dayanak" blogu maddenin TAM METNINI birebir gosteriyor;
+  // arama filtrelense bile burasi filtrelenmezse yetkisiz maddenin metni
+  // dogrudan ekrana duser. Yanit gizlenir ama dayanak sizar.
+  const { clause, values } = labelFilter(principal);
   const rows = getDb()
-    .prepare('SELECT content FROM chunks WHERE doc_title = ? AND section = ? ORDER BY id')
-    .all(docTitle, section) as { content: string }[];
+    .prepare(
+      `SELECT c.content ${VISIBLE_CHUNKS} (${clause})
+         AND c.doc_title = ? AND c.section = ? ORDER BY c.id`,
+    )
+    .all(...values, docTitle, section) as { content: string }[];
 
   if (!rows.length) return null;
   return rows.map((r) => r.content).join('\n');
 }
 
 /**
+ * Indeksleme ve bakim islerinin kimligi.
+ *
+ * DIKKAT — bu bir arka kapi DEGIL, bilincli bir istisnadir: korpusu kuran
+ * betikler (ingest, kalibrasyon, testler) tanimi geregi tum dokumanlari
+ * gormelidir. HTTP uclari bunu ASLA kullanmaz; onlar oturumdan gelen kimligi
+ * gecirir. Ayrimin gorunur olmasi icin ad bilerek dikkat cekici.
+ */
+export const SYSTEM_PRINCIPAL: Principal = {
+  userId: 0,
+  username: 'sistem',
+  role: 'yonetici',
+};
+
+/**
+ * Kimligin gorebilecegi parcalari secen SQL parcasi.
+ *
+ * LEFT JOIN + COALESCE onemli: `documents` tablosuna kaydi olmayan dokumanlar
+ * (Sprint 1 oncesi indekslenmis 20 dokuman) `genel` sayilir. Karar boyleydi —
+ * mevcut dokumanlari sessizce kisitlamak bugunku davranisi bozardi.
+ */
+const VISIBLE_CHUNKS = `
+  FROM chunks c
+  LEFT JOIN documents d ON d.doc_title = c.doc_title
+  WHERE COALESCE(d.access_label, 'genel') IN`;
+
+/**
  * Sozcuk indeksi (BM25) tembel kurulur ve surec omru boyunca yeniden kullanilir.
  * Indeks yeniden olusturuldugunda resetLexicalIndex() cagrilmalidir.
+ *
+ * ROL BASINA AYRI INDEKS — kararin gercek bedeli burada.
+ *
+ * BM25 skoru korpus istatistigine baglidir: bir sozcugun KAC dokumanda gectigi
+ * (IDF). Havuz role gore daralinca bu istatistik kayar. Tek bir kuresel indeks
+ * kullansaydik, kullanicinin goremedigi dokumanlar onun skorlarini etkilerdi —
+ * cok zayif da olsa bir bilgi sizintisi, ve "sistem o belgeyi okumadi"
+ * iddiasini delerdi.
+ *
+ * Maliyeti onemsiz: 3 rol x ~100 parca.
  */
-let bm25: Bm25Index | null = null;
+const bm25ByRole = new Map<Role, Bm25Index>();
 
 export function resetLexicalIndex(): void {
-  bm25 = null;
+  bm25ByRole.clear();
 }
 
-function getLexicalIndex(): Bm25Index {
-  if (!bm25) {
-    const rows = getDb()
-      .prepare('SELECT id, doc_title, section, content FROM chunks')
-      .all() as { id: number; doc_title: string; section: string; content: string }[];
-    // Baslik da indekslenir: konu sinyali govdede gecmeyebilir.
-    bm25 = new Bm25Index(
-      rows.map((r) => ({ id: r.id, text: `${r.doc_title} ${r.section} ${r.content}` })),
-    );
-  }
-  return bm25;
+function getLexicalIndex(principal: Principal): Bm25Index {
+  const cached = bm25ByRole.get(principal.role);
+  if (cached) return cached;
+
+  const { clause, values } = labelFilter(principal);
+  const rows = getDb()
+    .prepare(`SELECT c.id, c.doc_title, c.section, c.content ${VISIBLE_CHUNKS} (${clause})`)
+    .all(...values) as { id: number; doc_title: string; section: string; content: string }[];
+
+  // Baslik da indekslenir: konu sinyali govdede gecmeyebilir.
+  const index = new Bm25Index(
+    rows.map((r) => ({ id: r.id, text: `${r.doc_title} ${r.section} ${r.content}` })),
+  );
+  bm25ByRole.set(principal.role, index);
+  return index;
 }
 
 /**
@@ -157,12 +214,26 @@ function getLexicalIndex(): Bm25Index {
  * Salt vektor skoru kapsam disi sorgulara da 0.80+ verebiliyor; sozcuk bileseni
  * bu durumda ~0 kalarak fuzyon skorunu asagi ceker ve ayrim bosluğunu genisletir.
  */
-export function scoreAllChunks(queryVector: Float32Array, query?: string): RetrievedChunk[] {
+export function scoreAllChunks(
+  queryVector: Float32Array,
+  query: string | undefined,
+  principal: Principal,
+): RetrievedChunk[] {
+  // KILIT KAPIDA: filtre burada, skorlamadan ONCE. Yetkisiz parcalar aday
+  // havuzuna hic girmez — ne baglama, ne alintiya, ne kanit secimine.
+  // `principal` bilincli olarak varsayilansiz: atlayan cagri derlenmez.
+  const { clause, values } = labelFilter(principal);
   const rows = getDb()
-    .prepare('SELECT id, doc_title, section, content, vector FROM chunks')
-    .all() as { id: number; doc_title: string; section: string; content: string; vector: Uint8Array }[];
+    .prepare(`SELECT c.id, c.doc_title, c.section, c.content, c.vector ${VISIBLE_CHUNKS} (${clause})`)
+    .all(...values) as {
+    id: number;
+    doc_title: string;
+    section: string;
+    content: string;
+    vector: Uint8Array;
+  }[];
 
-  const lex = query ? getLexicalIndex().normalizedScore(query) : null;
+  const lex = query ? getLexicalIndex(principal).normalizedScore(query) : null;
   const w = query ? LEXICAL_WEIGHT : 0;
 
   return rows
@@ -205,20 +276,28 @@ export interface GateDiagnostics {
  */
 export function queryTopKChunks(
   queryVector: Float32Array,
+  principal: Principal,
   k: number = TOP_K,
   threshold: number = SIMILARITY_THRESHOLD,
   query?: string,
 ): RetrievedChunk[] {
-  return retrieveWithDiagnostics(queryVector, k, threshold, query).chunks;
+  return retrieveWithDiagnostics(queryVector, principal, k, threshold, query).chunks;
 }
 
+/**
+ * `principal` bilincli olarak IKINCI parametre — sona eklenemezdi (zorunlu
+ * parametre istege bagli olanlari izleyemez) ve sona eklenebilseydi bile
+ * yanlis olurdu: bu sirayla her cagri yerinin guncellenmesi ZORUNLU hale
+ * geliyor, yani filtreyi atlayan bir cagri derlenmiyor.
+ */
 export function retrieveWithDiagnostics(
   queryVector: Float32Array,
+  principal: Principal,
   k: number = TOP_K,
   threshold: number = SIMILARITY_THRESHOLD,
   query?: string,
 ): { chunks: RetrievedChunk[]; diagnostics: GateDiagnostics } {
-  const scored = scoreAllChunks(queryVector, query);
+  const scored = scoreAllChunks(queryVector, query, principal);
 
   if (!scored.length) {
     return {

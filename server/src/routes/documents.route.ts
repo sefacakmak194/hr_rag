@@ -23,7 +23,7 @@ import { CORPUS_DIR } from '../config/constants.js';
 import { runIngestion } from '../services/ingestion.service.js';
 import { extractChunks } from '../services/chunker.js';
 import { readDocument, shadowedFiles, SUPPORTED_EXT } from '../services/documentReader.service.js';
-import { countChunks, listDocuments, resetStore, resetLexicalIndex } from '../services/vectorStore.service.js';
+import { countChunks, listDocuments, resetStore, resetLexicalIndex, SYSTEM_PRINCIPAL } from '../services/vectorStore.service.js';
 import { auditCorpus } from '../services/corpusAudit.service.js';
 
 const router = Router();
@@ -103,7 +103,7 @@ const CALIBRATION_WARNING =
 
 // ------------------------------------------------------------------- liste
 router.get('/documents', (_req: Request, res: Response) => {
-  const indexed = new Map(listDocuments().map((d) => [d.docTitle, d.chunks]));
+  const indexed = new Map(listDocuments(SYSTEM_PRINCIPAL).map((d) => [d.docTitle, d.chunks]));
 
   const files = fs.existsSync(CORPUS_DIR)
     ? fs

@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { generateQueryEmbedding } from '../services/embedding.service.js';
-import { queryTopKChunks, findSectionText } from '../services/vectorStore.service.js';
+import { queryTopKChunks, findSectionText, SYSTEM_PRINCIPAL } from '../services/vectorStore.service.js';
 import { classifyIntent } from '../services/intent.service.js';
 import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
 import { selectEvidence } from '../services/evidence.service.js';
@@ -98,7 +98,7 @@ router.post('/chat', async (req: Request, res: Response) => {
     if (!citations.length) return;
 
     const [primary, ...rest] = citations;
-    const text = findSectionText(primary.doc, primary.section);
+    const text = findSectionText(primary.doc, primary.section, SYSTEM_PRINCIPAL);
     if (!text) return;
 
     send(
@@ -167,7 +167,7 @@ router.post('/chat', async (req: Request, res: Response) => {
     const queryVector = await generateQueryEmbedding(searchQuery);
 
     // 2. Yerel veritabanindan Top-K parcalari getir (hibrit: vektor + BM25)
-    const retrieved = queryTopKChunks(queryVector, TOP_K, SIMILARITY_THRESHOLD, searchQuery);
+    const retrieved = queryTopKChunks(queryVector, SYSTEM_PRINCIPAL, TOP_K, SIMILARITY_THRESHOLD, searchQuery);
 
     // 2a. Kutupluluga gore yeniden sirala (alaka kapisindan SONRA, hicbir parca
     // elenmeden). "ucretli" sorgusu "ucretsiz" maddesini one cikariyordu;

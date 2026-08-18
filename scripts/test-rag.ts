@@ -7,7 +7,7 @@
  * Kullanim:  cd server && npm run test:rag
  */
 import { generateQueryEmbedding } from '../server/src/services/embedding.service.js';
-import { retrieveWithDiagnostics, scoreAllChunks, countChunks } from '../server/src/services/vectorStore.service.js';
+import { retrieveWithDiagnostics, scoreAllChunks, countChunks, SYSTEM_PRINCIPAL } from '../server/src/services/vectorStore.service.js';
 import { classifyIntent, type IntentKind } from '../server/src/services/intent.service.js';
 import { getSession, recordTurn, resolveQuery, clearSession } from '../server/src/services/conversation.service.js';
 import { SIMILARITY_THRESHOLD, RELEVANCE_MARGIN, TOP_K } from '../server/src/config/constants.js';
@@ -237,7 +237,7 @@ for (const c of cases) {
   }
 
   const vector = await generateQueryEmbedding(c.question);
-  const { chunks: hits, diagnostics: d } = retrieveWithDiagnostics(vector, undefined, undefined, c.question);
+  const { chunks: hits, diagnostics: d } = retrieveWithDiagnostics(vector, SYSTEM_PRINCIPAL, undefined, undefined, c.question);
   const top = hits[0];
 
   const accepted = c.expectDoc === null ? [] : [c.expectDoc].flat();
@@ -261,7 +261,7 @@ for (const c of cases) {
   console.log(`        ${detail}`);
 
   if (!ok && c.expectDoc !== null) {
-    const near = scoreAllChunks(vector, c.question).slice(0, 3);
+    const near = scoreAllChunks(vector, c.question, SYSTEM_PRINCIPAL).slice(0, 3);
     for (const n of near) console.log(`          aday ${n.score.toFixed(4)}  ${n.docTitle} → ${n.section}`);
   }
 }

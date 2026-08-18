@@ -211,7 +211,28 @@ export async function* streamFromFoundryLocal(
   let buffer = '';
 
   while (true) {
-    const { done, value } = await reader.read();
+    // AKIS ORTASINDA KOPMA — olculdu ve kullaniciya yanlis mesaj gosteriyordu.
+    //
+    // Yukaridaki try/catch yalnizca BAGLANTI KURULURKEN olusan hatayi yakalar.
+    // Foundry daemon'i baglantiyi kabul edip sonra dusurdugunde ("SocketError:
+    // other side closed") hata buradan ham sekilde cikiyordu: uc nokta onbellegi
+    // temizlenmiyor ve kullanici FOUNDRY_OFFLINE yerine genel "islem sirasinda
+    // bir hata olustu" mesajini goruyordu.
+    //
+    // Daemon uzun sure ayakta kalip model yukle/at dongusu yasadiginda tam
+    // olarak bu davranisi gosteriyor (bkz. README, "Yanitlar birden yavasladi").
+    let chunk: Awaited<ReturnType<typeof reader.read>>;
+    try {
+      chunk = await reader.read();
+    } catch (error) {
+      invalidate(); // port degismis ya da daemon yeniden baslamis olabilir
+      throw new FoundryOfflineError(
+        `Foundry Local bağlantısı yanıt ortasında kesildi (${(error as Error).message}). ` +
+          'Servisi yeniden başlatın: foundry server restart',
+      );
+    }
+
+    const { done, value } = chunk;
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });

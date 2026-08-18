@@ -23,7 +23,9 @@ import { CORPUS_DIR } from '../config/constants.js';
 import { runIngestion } from '../services/ingestion.service.js';
 import { extractChunks } from '../services/chunker.js';
 import { readDocument, shadowedFiles, SUPPORTED_EXT } from '../services/documentReader.service.js';
-import { countChunks, listDocuments, resetStore, resetLexicalIndex, SYSTEM_PRINCIPAL } from '../services/vectorStore.service.js';
+import { countChunks, listDocuments, resetStore, resetLexicalIndex } from '../services/vectorStore.service.js';
+import { requireAuth, requireDocumentManager } from '../middleware/session.js';
+import type { Principal } from '../services/identity.service.js';
 import { auditCorpus } from '../services/corpusAudit.service.js';
 
 const router = Router();
@@ -102,8 +104,9 @@ const CALIBRATION_WARNING =
   '`npx tsx ../scripts/calibrate.ts` ile yeniden kalibre edip `npm test` ile doğrulayın.';
 
 // ------------------------------------------------------------------- liste
-router.get('/documents', (_req: Request, res: Response) => {
-  const indexed = new Map(listDocuments(SYSTEM_PRINCIPAL).map((d) => [d.docTitle, d.chunks]));
+router.get('/documents', requireAuth, (req: Request, res: Response) => {
+  // Liste kimlige gore filtrelenir: dokuman ADI bile bilgi tasir.
+  const indexed = new Map(listDocuments(req.principal as Principal).map((d) => [d.docTitle, d.chunks]));
 
   const files = fs.existsSync(CORPUS_DIR)
     ? fs
@@ -138,7 +141,7 @@ router.get('/documents', (_req: Request, res: Response) => {
  * Celiski, tekrar ve yapi sorunlarini raporlar. Gercek bir IK arsivi temiz
  * degildir; bu ucu sessizce yanlis cevap uretir (bkz. corpusAudit.service).
  */
-router.get('/corpus/audit', (_req: Request, res: Response) => {
+router.get('/corpus/audit', requireDocumentManager, (_req: Request, res: Response) => {
   try {
     res.json(auditCorpus());
   } catch (error) {
@@ -147,7 +150,7 @@ router.get('/corpus/audit', (_req: Request, res: Response) => {
 });
 
 // ------------------------------------------------------------------ yukleme
-router.post('/documents', async (req: Request, res: Response) => {
+router.post('/documents', requireDocumentManager, async (req: Request, res: Response) => {
   const { name, contentBase64 } = req.body ?? {};
 
   const file = safeName(name);
@@ -243,7 +246,7 @@ router.post('/documents', async (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------------- silme
-router.delete('/documents/:name', async (req: Request, res: Response) => {
+router.delete('/documents/:name', requireDocumentManager, async (req: Request, res: Response) => {
   const file = safeName(req.params.name);
   if (!file) return res.status(400).json({ error: 'Geçersiz dosya adı.' });
 
@@ -266,7 +269,7 @@ router.delete('/documents/:name', async (req: Request, res: Response) => {
 });
 
 // ------------------------------------------------------- elle yeniden indeks
-router.post('/documents/reindex', async (_req: Request, res: Response) => {
+router.post('/documents/reindex', requireDocumentManager, async (_req: Request, res: Response) => {
   const result = await reindex();
   res.json({ ok: !result.error, indexedChunks: result.chunks, indexError: result.error });
 });

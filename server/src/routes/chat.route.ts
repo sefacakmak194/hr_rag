@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import { generateQueryEmbedding } from '../services/embedding.service.js';
-import { queryTopKChunks, findSectionText, SYSTEM_PRINCIPAL } from '../services/vectorStore.service.js';
+import { queryTopKChunks, findSectionText } from '../services/vectorStore.service.js';
+import { requireAuth } from '../middleware/session.js';
+import type { Principal } from '../services/identity.service.js';
 import { classifyIntent } from '../services/intent.service.js';
 import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
 import { selectEvidence } from '../services/evidence.service.js';
@@ -65,7 +67,9 @@ router.post('/session/reset', (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-router.post('/chat', async (req: Request, res: Response) => {
+router.post('/chat', requireAuth, async (req: Request, res: Response) => {
+  // requireAuth gectiyse kimlik kesin var.
+  const principal = req.principal as Principal;
   const { message, sessionId } = req.body ?? {};
 
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -98,7 +102,7 @@ router.post('/chat', async (req: Request, res: Response) => {
     if (!citations.length) return;
 
     const [primary, ...rest] = citations;
-    const text = findSectionText(primary.doc, primary.section, SYSTEM_PRINCIPAL);
+    const text = findSectionText(primary.doc, primary.section, principal);
     if (!text) return;
 
     send(
@@ -129,7 +133,7 @@ router.post('/chat', async (req: Request, res: Response) => {
     // 0. Niyet siniflandirmasi (deterministik, LLM'siz).
     // Selamlama ve tanitim sorulari RAG hattina hic girmez; aksi halde alaka
     // kapisina takilip resmi "bilgi bulunmamaktadir" yanitini alirlardi.
-    const intent = classifyIntent(message);
+    const intent = classifyIntent(message, principal);
 
     // "Ne konusuyorduk?" — yanit oturum hafizasindan deterministik uretilir.
     if (intent.kind === 'recap') {
@@ -167,7 +171,7 @@ router.post('/chat', async (req: Request, res: Response) => {
     const queryVector = await generateQueryEmbedding(searchQuery);
 
     // 2. Yerel veritabanindan Top-K parcalari getir (hibrit: vektor + BM25)
-    const retrieved = queryTopKChunks(queryVector, SYSTEM_PRINCIPAL, TOP_K, SIMILARITY_THRESHOLD, searchQuery);
+    const retrieved = queryTopKChunks(queryVector, principal, TOP_K, SIMILARITY_THRESHOLD, searchQuery);
 
     // 2a. Kutupluluga gore yeniden sirala (alaka kapisindan SONRA, hicbir parca
     // elenmeden). "ucretli" sorgusu "ucretsiz" maddesini one cikariyordu;

@@ -151,6 +151,79 @@ check(
   'Sprint 1 oncesi indekslenmis 20 dokuman icin gecerli',
 );
 
+// --------------------------------------------------------------- 6) uc korumalari
+console.log('\n  HTTP uc korumalari\n');
+
+const { readCookie, requireAuth, requireDocumentManager, setSessionCookie, SESSION_COOKIE } =
+  await import('../server/src/middleware/session.js');
+
+// Cerez ayristirma elle yazildi (cookie-parser bagimliligindan kacinmak icin),
+// dolayisiyla dogrulanmasi gerekiyor.
+check(readCookie('hr_session=abc123', SESSION_COOKIE) === 'abc123', 'tek cerez okunuyor');
+check(
+  readCookie('theme=dark; hr_session=abc123; lang=tr', SESSION_COOKIE) === 'abc123',
+  'birden cok cerez arasindan dogru olan seciliyor',
+);
+check(readCookie('hr_sessionx=abc', SESSION_COOKIE) === undefined, 'benzer isimli cerez eslesmiyor');
+check(readCookie(undefined, SESSION_COOKIE) === undefined, 'cerez basligi yoksa undefined');
+
+/** Minimal sahte res: yalnizca status/json/setHeader yakalanir. */
+function fakeRes() {
+  const out: { status?: number; body?: unknown; headers: Record<string, string> } = { headers: {} };
+  const res = {
+    status(code: number) {
+      out.status = code;
+      return res;
+    },
+    json(body: unknown) {
+      out.body = body;
+      return res;
+    },
+    setHeader(k: string, v: string) {
+      out.headers[k] = v;
+    },
+  };
+  return { res, out };
+}
+
+function runGuard(
+  guard: (req: never, res: never, next: () => void) => void,
+  principal: Principal | undefined,
+): { passed: boolean; status?: number } {
+  const { res, out } = fakeRes();
+  let passed = false;
+  guard({ principal } as never, res as never, () => {
+    passed = true;
+  });
+  return { passed, status: out.status };
+}
+
+const anon = runGuard(requireAuth, undefined);
+check(!anon.passed && anon.status === 401, `girissiz istek reddediliyor (${anon.status})`);
+check(runGuard(requireAuth, calisan).passed, 'girisli istek geciyor');
+
+const calisanYukleme = runGuard(requireDocumentManager, calisan);
+check(
+  !calisanYukleme.passed && calisanYukleme.status === 403,
+  `calisan dokuman yukleyemiyor (${calisanYukleme.status})`,
+  'bugun bu uclar herkese acikti',
+);
+check(runGuard(requireDocumentManager, ik).passed, 'ik dokuman yukleyebiliyor');
+check(runGuard(requireDocumentManager, yonetici).passed, 'yonetici dokuman yukleyebiliyor');
+check(
+  runGuard(requireDocumentManager, undefined).status === 401,
+  'girissiz yukleme istegi 401 aliyor (403 degil)',
+  'kimlik yoksa once giris istenmeli',
+);
+
+// Cerez bayraklari: HttpOnly olmadan jeton XSS ile calinabilir.
+const { res: cookieRes, out: cookieOut } = fakeRes();
+setSessionCookie(cookieRes as never, 'jeton', 8);
+const setCookie = cookieOut.headers['Set-Cookie'] ?? '';
+check(setCookie.includes('HttpOnly'), 'cerez HttpOnly', setCookie);
+check(setCookie.includes('SameSite=Strict'), 'cerez SameSite=Strict', setCookie);
+check(setCookie.includes('Max-Age=28800'), '8 saatlik omur', setCookie);
+
 db.close();
 try {
   fs.rmSync(dir, { recursive: true, force: true });

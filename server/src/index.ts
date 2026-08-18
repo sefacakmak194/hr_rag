@@ -3,6 +3,8 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import chatRoute from './routes/chat.route.js';
 import documentsRoute from './routes/documents.route.js';
+import authRoute from './routes/auth.route.js';
+import { attachPrincipal } from './middleware/session.js';
 import { checkFoundryHealth } from './services/foundryClient.service.js';
 import { countChunks, listDocuments, SYSTEM_PRINCIPAL } from './services/vectorStore.service.js';
 import { warmupEmbeddingModel } from './services/embedding.service.js';
@@ -31,6 +33,9 @@ app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Oturum cerezi capraz kokende (Vite 5173 -> sunucu 5273) gonderilebilsin.
+  // Bu basliksiz tarayici cerezi ne gonderir ne de kaydeder.
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -60,6 +65,11 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
+// Kimlik her istekte cozulur; reddetme karari ucun kendisinde verilir.
+// Rotalardan ONCE baglanmasi sart.
+app.use(attachPrincipal);
+
+app.use('/api', authRoute);
 app.use('/api', chatRoute);
 app.use('/api', documentsRoute);
 

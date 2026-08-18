@@ -54,7 +54,7 @@ console.log('\n  Niyet siniflandirma testleri\n');
 
 let intentFailures = 0;
 for (const c of intentCases) {
-  const got = classifyIntent(c.input).kind;
+  const got = classifyIntent(c.input, SYSTEM_PRINCIPAL).kind;
   const ok = got === c.expect;
   if (!ok) intentFailures++;
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  "${c.input}" → ${got}${ok ? '' : ` (beklenen ${c.expect})`}`);

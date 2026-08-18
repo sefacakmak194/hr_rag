@@ -1,4 +1,5 @@
-import { countChunks, listDocuments, SYSTEM_PRINCIPAL } from './vectorStore.service.js';
+import { countChunks, listDocuments } from './vectorStore.service.js';
+import type { Principal } from './identity.service.js';
 
 export type IntentKind = 'greeting' | 'capability' | 'thanks' | 'farewell' | 'recap' | 'rag';
 
@@ -120,11 +121,11 @@ function farewellResponse(): string {
  * Yetenek yaniti canli indeksten beslenir: dokuman ve parca sayisi
  * veritabanindan okunur, boylece kapsam degistiginde metin de guncel kalir.
  */
-function capabilityResponse(): string {
+function capabilityResponse(principal: Principal): string {
   let docCount = 0;
   let chunkCount = 0;
   try {
-    docCount = listDocuments(SYSTEM_PRINCIPAL).length;
+    docCount = listDocuments(principal).length;
     chunkCount = countChunks();
   } catch {
     /* indeks henuz olusmamis olabilir */
@@ -158,7 +159,7 @@ function capabilityResponse(): string {
  * aramasindan gecip alaka kapisina takilarak resmi "bilgi bulunmamaktadir"
  * yanitini almasini onlemek. Kapsam disi GERCEK sorular icin fallback korunur.
  */
-export function classifyIntent(message: string): IntentResult {
+export function classifyIntent(message: string, principal: Principal): IntentResult {
   const text = normalize(message);
   if (!text) return { kind: 'rag' };
 
@@ -172,7 +173,7 @@ export function classifyIntent(message: string): IntentResult {
 
   // Yetenek sorulari (kalip bazli, uzunluktan bagimsiz).
   if (CAPABILITY_PATTERNS.some((re) => re.test(text))) {
-    return { kind: 'capability', response: capabilityResponse() };
+    return { kind: 'capability', response: capabilityResponse(principal) };
   }
 
   // Selamlama / tesekkur / vedalasma: yalnizca kisa sorgularda.

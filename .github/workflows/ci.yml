@@ -1,0 +1,62 @@
+# Cevrimdisi dogrulama: her push ve PR'da tip kontrolu + LLM gerektirmeyen
+# test paketleri.
+#
+# KAPSAM DISI (bilincli): `npm run eval` ve `npm run compare` Foundry Local
+# calisan bir makine ve yerel GPU ister; barindirilan bir kosucuda kurulamaz.
+# Bunlar yerelde calistirilir, sonuclari data/ altinda belgelenir.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Ayni dal icin ust uste gelen kosumlari iptal et.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    name: Tip kontrolu + cevrimdisi testler
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # node:sqlite Node 24'te kararli; proje bu surumle gelistiriliyor.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Bagimliliklar
+        run: |
+          npm ci --prefix server
+          npm ci --prefix client
+
+      # Embedding modeli (~448 MB) ilk kosumda HuggingFace'ten iner.
+      # DIKKAT: bu adim `npm ci`den SONRA gelmeli — npm ci node_modules'u siler.
+      - name: Embedding modeli onbellegi
+        uses: actions/cache@v4
+        with:
+          path: server/node_modules/@huggingface/transformers/.cache
+          key: e5-small-fp32-${{ hashFiles('server/package-lock.json') }}
+          restore-keys: e5-small-fp32-
+
+      - name: Tip kontrolu (sunucu + betikler)
+        run: npm run typecheck --prefix server
+
+      - name: Istemci derlemesi (tsc -b + vite)
+        run: npm run build --prefix client
+
+      # Retrieval testleri indekslenmis bir vektor deposu ister.
+      - name: Korpusu indeksle
+        run: npm run ingest
+
+      # 7 paket: policy, evidence, documents, formats, audit, rag, pdf
+      - name: Cevrimdisi test paketleri
+        run: npm test

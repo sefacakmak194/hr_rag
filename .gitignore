@@ -1,0 +1,26 @@
+node_modules/
+dist/
+dist-app/
+.sea-build/
+
+# Makineye ozel ayarlar (.env.example izlenir)
+.env.local
+
+# Uretilen vektor indeksi — `npm run ingest` ile yeniden olusturulur
+data/vectors.db
+
+# Embedding modeli onbellegi
+.cache/
+
+# tesseract.js, calisma dizinine dil verisi onbellegi yazar. Kaynak kopya
+# server/vendor/tessdata/ altinda ve IZLENIR (air-gapped OCR icin sart).
+server/*.traineddata
+
+# Isletim sistemi / editor artiklari
+Thumbs.db
+.DS_Store
+*.log
+
+# NOT: scripts/fixtures/ BILINCLI olarak izleniyor. Uretici betik
+# (make-fixtures.mjs) taranmis PDF icin Chrome'a ve Windows yollarina bagli;
+# CI'da uretilemez. Dosyalar 81 KB, test girdisi olarak depoda tutuluyor.

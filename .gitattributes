@@ -1,0 +1,12 @@
+# Depoda satir sonlari LF; calisma kopyasi isletim sistemine birakilir.
+* text=auto eol=lf
+
+# Ikili dosyalar HICBIR donusumden gecmemeli. Ozellikle tur.traineddata:
+# CRLF donusumu dosyayi bozar ve OCR sessizce calismaz hale gelir.
+*.traineddata binary
+*.pdf        binary
+*.docx       binary
+*.db         binary
+*.onnx       binary
+*.png        binary
+*.ico        binary

@@ -1,0 +1,239 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import {
+  DB_PATH,
+  EMBEDDING_DIM,
+  TOP_K,
+  SIMILARITY_THRESHOLD,
+  RELEVANCE_MARGIN,
+  CONTEXT_BAND,
+  LEXICAL_WEIGHT,
+} from '../config/constants.js';
+import { cosineSimilarity } from './embedding.service.js';
+import { Bm25Index } from './lexical.service.js';
+
+export interface ChunkRecord {
+  docTitle: string;
+  section: string;
+  content: string;
+  vector: Float32Array;
+}
+
+export interface RetrievedChunk {
+  id: number;
+  docTitle: string;
+  section: string;
+  content: string;
+  /** Fuzyon sonrasi nihai skor (esik bununla karsilastirilir). */
+  score: number;
+  /** Kosinus benzerligi bileseni. */
+  vectorScore: number;
+  /** BM25'ten turetilmis [0,1] sozcuk bileseni. */
+  lexicalScore: number;
+}
+
+let db: DatabaseSync | null = null;
+
+/**
+ * Yerel vektor deposu.
+ *
+ * Sartname sqlite-vss oneriyor; ancak sqlite-vss Windows'ta on-derlenmis ikili
+ * saglamadigi (ve bakimi durdugu) icin burada Node 24'un yerlesik `node:sqlite`
+ * modulu kullanilir: vektorler BLOB olarak saklanir, kosinus benzerligi surec
+ * icinde hesaplanir. Native bagimlilik yoktur, %100 yerel calisir ve bu
+ * korpus buyuklugunde (onlarca parca) brute-force arama milisaniyeler surer.
+ */
+export function getDb(): DatabaseSync {
+  if (!db) {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    db = new DatabaseSync(DB_PATH);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS chunks (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        doc_title TEXT NOT NULL,
+        section   TEXT NOT NULL,
+        content   TEXT NOT NULL,
+        dim       INTEGER NOT NULL,
+        vector    BLOB NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks(doc_title);
+    `);
+  }
+  return db;
+}
+
+const toBlob = (v: Float32Array): Uint8Array =>
+  new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+
+const fromBlob = (b: Uint8Array): Float32Array => {
+  const copy = new Uint8Array(b);            // hizali (aligned) kopya
+  return new Float32Array(copy.buffer, 0, copy.byteLength / 4);
+};
+
+/** Tum indeksi temizler (yeniden indeksleme oncesi). */
+export function resetStore(): void {
+  const database = getDb();
+  database.exec('DELETE FROM chunks;');
+  database.exec("DELETE FROM sqlite_sequence WHERE name='chunks';");
+}
+
+/** Tek bir parcayi vektoruyle birlikte kaydeder. */
+export function insertChunk(record: ChunkRecord): void {
+  if (record.vector.length !== EMBEDDING_DIM) {
+    throw new Error(`Beklenmeyen vektor boyutu: ${record.vector.length}`);
+  }
+  getDb()
+    .prepare(
+      'INSERT INTO chunks (doc_title, section, content, dim, vector) VALUES (?, ?, ?, ?, ?)',
+    )
+    .run(record.docTitle, record.section, record.content, record.vector.length, toBlob(record.vector));
+}
+
+export function countChunks(): number {
+  const row = getDb().prepare('SELECT COUNT(*) AS n FROM chunks').get() as { n: number } | undefined;
+  return row?.n ?? 0;
+}
+
+export function listDocuments(): { docTitle: string; chunks: number }[] {
+  const rows = getDb()
+    .prepare('SELECT doc_title AS docTitle, COUNT(*) AS chunks FROM chunks GROUP BY doc_title ORDER BY doc_title')
+    .all() as { docTitle: string; chunks: number }[];
+  return rows;
+}
+
+/**
+ * Bir maddenin tam metnini dondurur.
+ *
+ * Yanit altinda gosterilen "dayanak" blogu icin gerekli: deterministik yollarla
+ * (kademe hesaplayicisi) uretilen yanitlarda elimizde yalnizca dosya adi ve
+ * bolum basligi oluyor, metnin kendisi olmuyor.
+ *
+ * Bolum birden fazla parcaya bolunmusse (uzun maddeler) parcalar sirayla
+ * birlestirilir; overlap nedeniyle olusan tekrarlar kabul edilir, metin
+ * kullaniciya bilgi olarak gosterilir, yeniden indekslenmez.
+ */
+export function findSectionText(docTitle: string, section: string): string | null {
+  const rows = getDb()
+    .prepare('SELECT content FROM chunks WHERE doc_title = ? AND section = ? ORDER BY id')
+    .all(docTitle, section) as { content: string }[];
+
+  if (!rows.length) return null;
+  return rows.map((r) => r.content).join('\n');
+}
+
+/**
+ * Sozcuk indeksi (BM25) tembel kurulur ve surec omru boyunca yeniden kullanilir.
+ * Indeks yeniden olusturuldugunda resetLexicalIndex() cagrilmalidir.
+ */
+let bm25: Bm25Index | null = null;
+
+export function resetLexicalIndex(): void {
+  bm25 = null;
+}
+
+function getLexicalIndex(): Bm25Index {
+  if (!bm25) {
+    const rows = getDb()
+      .prepare('SELECT id, doc_title, section, content FROM chunks')
+      .all() as { id: number; doc_title: string; section: string; content: string }[];
+    // Baslik da indekslenir: konu sinyali govdede gecmeyebilir.
+    bm25 = new Bm25Index(
+      rows.map((r) => ({ id: r.id, text: `${r.doc_title} ${r.section} ${r.content}` })),
+    );
+  }
+  return bm25;
+}
+
+/**
+ * Kalibrasyon/hata ayiklama icin: kapi uygulamadan tum skorlari dondurur.
+ *
+ * HIBRIT SKOR: (1 - w) * kosinus + w * bm25_normalize
+ * Salt vektor skoru kapsam disi sorgulara da 0.80+ verebiliyor; sozcuk bileseni
+ * bu durumda ~0 kalarak fuzyon skorunu asagi ceker ve ayrim bosluğunu genisletir.
+ */
+export function scoreAllChunks(queryVector: Float32Array, query?: string): RetrievedChunk[] {
+  const rows = getDb()
+    .prepare('SELECT id, doc_title, section, content, vector FROM chunks')
+    .all() as { id: number; doc_title: string; section: string; content: string; vector: Uint8Array }[];
+
+  const lex = query ? getLexicalIndex().normalizedScore(query) : null;
+  const w = query ? LEXICAL_WEIGHT : 0;
+
+  return rows
+    .map((row) => {
+      const vectorScore = cosineSimilarity(queryVector, fromBlob(row.vector));
+      const lexicalScore = lex?.get(row.id) ?? 0;
+      return {
+        id: row.id,
+        docTitle: row.doc_title,
+        section: row.section,
+        content: row.content,
+        vectorScore,
+        lexicalScore,
+        score: (1 - w) * vectorScore + w * lexicalScore,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+export interface GateDiagnostics {
+  top: number;
+  mean: number;
+  margin: number;
+  passedAbsolute: boolean;
+  passedMargin: boolean;
+}
+
+/**
+ * En alakali K parcayi alaka kapisindan gecirerek dondurur.
+ *
+ * 1) Mutlak taban : en iyi skor SIMILARITY_THRESHOLD'u gecmeli. (asil kapi)
+ * 2) Goreli marj  : RELEVANCE_MARGIN > 0 ise ek kosul olarak uygulanir.
+ *                   Varsayilan 0 = kapali; gerekcesi icin bkz. constants.ts —
+ *                   olcut korpus buyuklugune duyarli oldugu icin bu korpusta
+ *                   ayirici degil.
+ *
+ * Kapi acilirsa, en iyi skora CONTEXT_BAND icinde kalan parcalar (en fazla K adet)
+ * baglama alinir. Aksi halde bos dizi doner ve cagiran taraf LLM'e HIC GITMEDEN
+ * sabit "bilgi bulunmamaktadir" yanitina duser.
+ */
+export function queryTopKChunks(
+  queryVector: Float32Array,
+  k: number = TOP_K,
+  threshold: number = SIMILARITY_THRESHOLD,
+  query?: string,
+): RetrievedChunk[] {
+  return retrieveWithDiagnostics(queryVector, k, threshold, query).chunks;
+}
+
+export function retrieveWithDiagnostics(
+  queryVector: Float32Array,
+  k: number = TOP_K,
+  threshold: number = SIMILARITY_THRESHOLD,
+  query?: string,
+): { chunks: RetrievedChunk[]; diagnostics: GateDiagnostics } {
+  const scored = scoreAllChunks(queryVector, query);
+
+  if (!scored.length) {
+    return {
+      chunks: [],
+      diagnostics: { top: 0, mean: 0, margin: 0, passedAbsolute: false, passedMargin: false },
+    };
+  }
+
+  const top = scored[0].score;
+  const mean = scored.reduce((s, c) => s + c.score, 0) / scored.length;
+  const margin = top - mean;
+
+  const passedAbsolute = top >= threshold;
+  const passedMargin = margin >= RELEVANCE_MARGIN;
+  const diagnostics: GateDiagnostics = { top, mean, margin, passedAbsolute, passedMargin };
+
+  if (!passedAbsolute || !passedMargin) {
+    return { chunks: [], diagnostics };
+  }
+
+  const chunks = scored.filter((c) => c.score >= top - CONTEXT_BAND).slice(0, k);
+  return { chunks, diagnostics };
+}

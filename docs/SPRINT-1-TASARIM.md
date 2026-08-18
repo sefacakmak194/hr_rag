@@ -1,7 +1,17 @@
 # Sprint 1 — Kimlik ve iz (tasarım)
 
-Durum: **taslak, uygulanmadı.** Şema ve zorlama noktaları kararlaştırıldıktan
-sonra kodlanacak.
+Durum: **tamamlandı.** Beş teslimatın tamamı kodlandı ve test edildi; çıkış
+ölçütünün iki cümlesi de karşılandı.
+
+| # | Teslimat | Durum |
+|---|---|---|
+| 1 | Yerel hesap girişi | ✅ `identity.service` · `auth.route` · `AuthGate` |
+| 2 | Üç rol | ✅ |
+| 3 | Erişim etiketi, kapıdan önce filtreleme | ✅ `vectorStore` + rol başına BM25 |
+| 4 | Silinemez denetim günlüğü | ✅ SQLite tetikleyicileri |
+| 5 | Yönetici ekranı: arama + dışa aktarma | ✅ `AuditPanel`, CSV |
+
+Test: `test:identity` (38) · `test:access` (41).
 
 Amaç: İK verisine kimin ne zaman eriştiğinin kayıt altına alınması ve yetkisiz
 dokümanların kullanıcıya hiçbir yoldan ulaşmaması.

@@ -5,6 +5,7 @@ import { readDocument, selectIndexableFiles } from './documentReader.service.js'
 import { generateEmbedding } from './embedding.service.js';
 import { insertChunk, resetStore, countChunks, resetLexicalIndex, getDb } from './vectorStore.service.js';
 import { upsertDocumentMeta } from './identity.service.js';
+import { resetDiacriticsSozluk } from './diacritics.service.js';
 import { recordVersion } from './versioning.service.js';
 import { CHUNK_SIZE, CHUNK_OVERLAP } from '../config/constants.js';
 
@@ -63,6 +64,8 @@ export async function runIngestion(
   // Yeniden indeksleme her seferinde temiz baslar (tekrar kayit olusmaz).
   resetStore();
   resetLexicalIndex();
+  // Korpus degisti: Turkce onarim sozlugu de korpustan turetiliyor.
+  resetDiacriticsSozluk();
 
   const report: IngestionReport = { files: [], totalChunks: 0, changed: [] };
   const db = getDb();

@@ -28,6 +28,7 @@ import path from 'node:path';
 import { CORPUS_DIR, PENDING_DIR } from '../config/constants.js';
 import { runIngestion, type IngestionOptions } from './ingestion.service.js';
 import { countChunks, resetStore, resetLexicalIndex, getDb } from './vectorStore.service.js';
+import { resetDiacriticsSozluk } from './diacritics.service.js';
 import {
   latestVersion,
   pendingVersion,
@@ -58,6 +59,7 @@ export async function reindex(
     // Korpus bosaldiysa runIngestion hata atar; depo zaten sifirlanmis olur.
     resetStore();
     resetLexicalIndex();
+    resetDiacriticsSozluk();
     return { chunks: 0, changed: [], error: (error as Error).message };
   } finally {
     done();

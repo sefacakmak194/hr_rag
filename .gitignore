@@ -43,3 +43,9 @@ Thumbs.db
 
 # Model karsilastirmasinin ara kaydi — kosum bitince silinir
 data/.compare-checkpoint.json
+
+# Tarama ciktilari. Rapor (TARAMA-RAPORU.md) IZLENIR — bulgu odur; yanindaki
+# veritabani kopyasi, ham JSON ve CSV ise yeniden uretilebilir ve buyuktur.
+data/tarama/tarama.db
+data/tarama/tarama-ham.json
+data/tarama/tarama.csv

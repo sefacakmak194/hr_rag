@@ -17,6 +17,7 @@
     "eval": "npm run eval --prefix server",
     "compare": "npm run compare --prefix server",
     "verify-archive": "npm run verify-archive --prefix server --",
-    "arsivle": "npm run arsivle --prefix server --"
+    "arsivle": "npm run arsivle --prefix server --",
+    "sweep": "npm run sweep --prefix server --"
   }
 }

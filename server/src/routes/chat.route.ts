@@ -12,6 +12,7 @@ import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
 import { selectEvidence } from '../services/evidence.service.js';
 import { rerankByPolarity } from '../services/polarity.service.js';
 import { expandQuery } from '../services/synonym.service.js';
+import { turkceyiOnar } from '../services/diacritics.service.js';
 import { inspectAnswer } from '../services/answerGuard.service.js';
 import {
   getSession,
@@ -265,7 +266,16 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     // 0c. Esanlam genisletmesi. Kullanicinin kelimesi mevzuatin kelimesi
     // olmayabilir ("annelik" korpusta hic gecmiyor, "analik" geciyor).
     // Orijinal ifade korunur, mevzuat karsiligi eklenir. Bkz. synonym.service.
-    const searchQuery = expandQuery(query);
+    // 0c-. Turkce karakter onarimi. 10.000 soruluk taramada olculdu: duzgun
+    // Turkce ile CEVAPLANAN 114 soru, Turkce karakter kullanilmadan yazildiginda
+    // cevapsiz kaliyor ve dususler esik civarinda degil ucurum boyutunda
+    // ("Kismi sureli calisma mumkun mu?" 0.8789 -> 0.7777). Bkz.
+    // diacritics.service — onarim korpusun KENDI sozlugunden yapilir, korpusa
+    // ve kalibrasyona dokunmaz.
+    const onarikQuery = turkceyiOnar(getDb(), query);
+    const onarikMessage = query === message ? onarikQuery : turkceyiOnar(getDb(), message);
+
+    const searchQuery = expandQuery(onarikQuery);
 
     // 1. Sorguyu vektorlestir (yerel embedding)
     const queryVector = await generateQueryEmbedding(searchQuery);
@@ -298,7 +308,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const evidences = contextChunks.map((c) => {
       if (!EVIDENCE_FOCUS) return null;
       return (
-        selectEvidence(c.content, expandQuery(message), { heading: c.section }) ??
+        selectEvidence(c.content, expandQuery(onarikMessage), { heading: c.section }) ??
         selectEvidence(c.content, searchQuery, { heading: c.section })
       );
     });

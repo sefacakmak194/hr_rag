@@ -134,9 +134,23 @@ npm run eval       # cevap kalitesi (çalışan sunucu + LLM gerekir)
 npm run compare    # model karşılaştırma matrisi (uzun sürer)
 ```
 
-`/api/chat` kimlik doğrulaması arkasında olduğu için `eval` ve `compare` oturum
-açar: `EVAL_USER` + `EVAL_PASSWORD` verilirse o hesapla giriş yapar, verilmezse
-geçici bir hesap açıp iş bitince siler (bkz. `scripts/eval-auth.ts`).
+`npm run eval` **yalıtılmış koşar**: veritabanının `VACUUM INTO` ile alınmış
+anlık kopyası üzerinde kendi sunucusunu ayağa kaldırır, iş bitince kopyayı da
+sunucuyu da siler. Sebep — her vaka bir denetim satırı yazıyor ve çalışan
+sunucuya karşı koşturulduğunda bunlar gerçek denetim kaydına düşüyordu
+(ölçüldü: tek koşum 70+ kalıcı satır bıraktı; kayıt silinemez olduğu için bu
+gürültü kalıcıdır).
+
+Belirli bir sunucuya karşı ölçmek için adres verin — bu durumda satırlar o
+sunucunun kaydına yazılır ve betik bunu açıkça uyarır:
+
+```bash
+npm run eval -- http://localhost:5273
+```
+
+`/api/chat` kimlik doğrulaması arkasında olduğu için oturum otomatik açılır:
+`EVAL_USER` + `EVAL_PASSWORD` verilirse o hesapla giriş yapar, verilmezse geçici
+bir hesap kullanılır (bkz. `scripts/eval-auth.ts`, `scripts/eval-sandbox.ts`).
 
 | Paket | Kapsam |
 |---|---|
@@ -978,6 +992,7 @@ private-hr-rag/
 │   ├── eval-answers.ts             # uçtan uca cevap kalitesi
 │   ├── compare-models.ts           # model karşılaştırma matrisi
 │   ├── eval-auth.ts                # değerlendirme paketleri için oturum
+│   ├── eval-sandbox.ts             # eval için yalıtılmış sunucu + DB kopyası
 │   ├── test-rag.ts · test-policy.ts · test-evidence.ts · test-pdf.ts
 │   ├── test-identity.ts · test-access.ts · test-versions.ts · test-endpoints.ts
 │   ├── test-integrity.ts · verify-archive.ts   # bağımsız arşiv doğrulayıcı

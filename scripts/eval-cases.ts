@@ -152,6 +152,8 @@ export interface AskResult {
   citations: { doc: string; section: string }[];
   seconds: number;
   error?: string;
+  /** Bozuk yanit kalkani devreye girdi; metin mevzuat alintisiyla degistirildi. */
+  replaced?: boolean;
 }
 
 /**
@@ -197,6 +199,7 @@ export async function ask(
   let answer = '';
   let citations: { doc: string; section: string }[] = [];
   let error: string | undefined;
+  let replaced = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -215,12 +218,21 @@ export async function ask(
         const parsed = JSON.parse(payload);
         if (event === 'metadata') citations = parsed.citations ?? [];
         else if (event === 'error') error = parsed.error;
-        else if (parsed.token) answer += parsed.token;
+        else if (event === 'replace' && typeof parsed.text === 'string') {
+          // BOZUK YANIT KALKANI devreye girdi (bkz. answerGuard.service).
+          //
+          // Bu olay ELE ALINMIYORDU ve olcum sessizce YANLIS seyi puanliyordu:
+          // kullanici mevzuatin birebir alintisini goruyor, eval ise modelin
+          // urettigi bozuk metni puanliyordu. Olculdu — "EnEnEnEn..." gibi
+          // cikti eval raporuna dusuyor, arayuzde ise hic gorunmuyordu.
+          answer = parsed.text;
+          replaced = true;
+        } else if (parsed.token) answer += parsed.token;
       } catch { /* kismi satir */ }
     }
   }
 
-  return { answer, citations, seconds: (Date.now() - t0) / 1000, error };
+  return { answer, citations, seconds: (Date.now() - t0) / 1000, error, replaced };
   } catch (e) {
     return { answer: '', citations: [], seconds: (Date.now() - t0) / 1000, error: (e as Error).message };
   }
@@ -238,6 +250,8 @@ export interface CaseResult {
   answer: string;
   seconds: number;
   citations: { doc: string; section: string }[];
+  /** Bozuk yanit kalkani devreye girdi mi? */
+  replaced?: boolean;
   /** Basarisizlik gerekceleri (bos ise gecti). */
   why: string[];
 }
@@ -277,7 +291,14 @@ export async function runCase(base: string, c: EvalCase, cookie?: string): Promi
     why.push(`kaynak beklenen "${c.expectDoc}" degil: ${r.citations.map((x) => x.doc).join(', ') || '(yok)'}`);
   }
 
-  return { ok: why.length === 0, answer: r.answer, seconds: r.seconds, citations: r.citations, why };
+  return {
+    ok: why.length === 0,
+    answer: r.answer,
+    seconds: r.seconds,
+    citations: r.citations,
+    replaced: r.replaced,
+    why,
+  };
 }
 
 /**

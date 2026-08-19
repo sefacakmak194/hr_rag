@@ -38,6 +38,7 @@ process.env.CORPUS_DIR = corpus;
 process.env.DB_PATH = path.join(work, 'audit.db');
 
 const { auditCorpus } = await import('../server/src/services/corpusAudit.service.js');
+const { SYSTEM_PRINCIPAL } = await import('../server/src/services/vectorStore.service.js');
 const { runIngestion } = await import('../server/src/services/ingestion.service.js');
 
 let failures = 0;
@@ -95,7 +96,7 @@ fs.writeFileSync(
 );
 
 await runIngestion(corpus);
-const broken = auditCorpus();
+const broken = auditCorpus(SYSTEM_PRINCIPAL);
 
 console.log(`  (${broken.documents} doküman · ${broken.chunks} parça)\n`);
 
@@ -127,7 +128,7 @@ if (!fs.existsSync(REAL_CORPUS)) {
   console.log('  ATLA  gercek korpus bulunamadi');
 } else {
   await runIngestion(REAL_CORPUS);
-  const clean = auditCorpus();
+  const clean = auditCorpus(SYSTEM_PRINCIPAL);
 
   check(
     clean.summary.yuksek === 0,

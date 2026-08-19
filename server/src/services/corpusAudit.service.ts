@@ -20,6 +20,7 @@
  */
 import { getDb } from './vectorStore.service.js';
 import { tokenize } from './lexical.service.js';
+import { labelFilter, type Principal } from './identity.service.js';
 
 export interface CorpusFinding {
   kind: 'celiski' | 'tekrar' | 'yapi';
@@ -36,10 +37,26 @@ interface ChunkRow {
   content: string;
 }
 
-function loadChunks(): ChunkRow[] {
+/**
+ * Korpus parcalarini KIMLIGE GORE filtreli okur.
+ *
+ * SIZINTI DUZELTMESI (Sprint 2'de bulundu): rapor tum parcalari okuyordu.
+ * Bulgular dokuman adini, madde basligini ve celisen SAYISAL DEGERLERI
+ * tasidigi icin, `ik` rolundeki bir kullanici `yonetici` etiketli bir
+ * belgenin icerigini bu ucdan gorebiliyordu — "kilit kapida" kararinin
+ * disinda kalmis tek okuma yolu buydu.
+ */
+function loadChunks(principal: Principal): ChunkRow[] {
+  const { clause, values } = labelFilter(principal);
   return getDb()
-    .prepare('SELECT id, doc_title AS docTitle, section, content FROM chunks ORDER BY id')
-    .all() as unknown as ChunkRow[];
+    .prepare(
+      `SELECT c.id, c.doc_title AS docTitle, c.section, c.content
+       FROM chunks c
+       LEFT JOIN documents d ON d.doc_title = c.doc_title
+       WHERE COALESCE(d.access_label, 'genel') IN (${clause})
+       ORDER BY c.id`,
+    )
+    .all(...values) as unknown as ChunkRow[];
 }
 
 // ------------------------------------------------------------------ celiski
@@ -269,8 +286,8 @@ export interface CorpusAudit {
   summary: { yuksek: number; orta: number; bilgi: number };
 }
 
-export function auditCorpus(): CorpusAudit {
-  const chunks = loadChunks();
+export function auditCorpus(principal: Principal): CorpusAudit {
+  const chunks = loadChunks(principal);
 
   const findings = [
     ...findConflicts(chunks),

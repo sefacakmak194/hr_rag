@@ -33,7 +33,8 @@
     "test:integrity": "tsx ../scripts/test-integrity.ts",
     "verify-archive": "tsx ../scripts/verify-archive.ts",
     "test:gap": "tsx ../scripts/test-gap.ts",
-    "calibrate:gap": "tsx ../scripts/calibrate-gap.ts"
+    "calibrate:gap": "tsx ../scripts/calibrate-gap.ts",
+    "arsivle": "tsx ../scripts/export-archive.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

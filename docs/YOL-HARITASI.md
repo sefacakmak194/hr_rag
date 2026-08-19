@@ -6,7 +6,7 @@
 > bulabildiğim şey koda bırakılmış üç yorum satırıydı. Kırılgan — bu yüzden plan
 > buraya yazıldı ve her sprint sonunda güncelleniyor.
 
-Son güncelleme: **19.08.2026**, Sprint 4 kapanışı.
+Son güncelleme: **19.08.2026**, ilk imzalı arşivin üretilip dışarı çıkarılması.
 
 ---
 
@@ -96,12 +96,28 @@ arşiv geriye dönük değiştirilemez.
 - Bir satırın silinmesi ya da değiştirilmesi zinciri o noktadan itibaren kırar
 - `verifyAuditChain()` ilk kırık halkayı bildirir
 
-**(b) İmzalı arşiv — ✅ tamamlandı**
+**(b) İmzalı arşiv — ✅ tamamlandı ve YÜRÜRLÜKTE**
 - Yerel üretilen Ed25519 anahtar çifti (`node:crypto`, dış bağımlılık yok)
 - Arşiv: denetim satırları + sürüm üstverisi (içerik özetleriyle) + zincir başı
 - Her arşiv bir öncekine bağlanır
 - **Bağımsız doğrulama betiği**: uygulama olmadan, başka makinede çalışır —
   denetçinin elinde yalnızca arşiv dosyası ve açık anahtar olacak
+- `npm run arsivle -- <hedef>` arşivi üretir, denetçi paketini hazırlar ve
+  **kopyayı doğruladıktan sonra** talimat dosyasını yazar
+
+**Kodlanmış olmak yeterli değildi.** Sprint 3a kapandığında 48 test geçiyordu ama
+gerçek veritabanında bir kez bile arşiv üretilmemişti: `data/arsiv/` yoktu, imza
+anahtarı yoktu. Bu haliyle elde koruma değil, koruma *kapasitesi* vardı — oysa
+yukarıdaki "dürüst sınır" bölümünün kendi ifadesi asıl savunmanın arşivin dışarı
+çıkarılmış olması olduğunu söylüyor. İlk arşiv üretildi, doğrulandı ve depo
+dışına çıkarıldı.
+
+**Doğrulayıcı sanıldığı kadar bağımsız değildi.** `scripts/verify-archive.ts`
+bağımsız olduğunu yazıyor ama `integrity.service`'i import ediyor; yani depo ve
+`tsx` gerektiriyor — denetçinin elinde ikisi de olmayacak. Paket artık aynı
+kaynaktan esbuild ile üretilmiş tek dosyalık `dogrula.mjs` taşıyor: yalnızca
+`node:*` modüllerine bağlı, boş bir Node kurulumunda çalışıyor. Mantık
+kopyalanmadı, taşınabilir hale getirildi.
 
 **(c) `.exe` kod imzalama — ⛔ SERTİFİKA BEKLİYOR**
 - Kullanıcı tek dosyayı çalıştırırken SmartScreen uyarısı almasın
@@ -117,7 +133,16 @@ yeterli değil; kritik olan tetikleyici *atlandığında* ne olduğu.
 
 Bağımsız doğrulayıcı uçtan uca çalıştırıldı: geçerli arşivde çıkış kodu 0,
 tek alanı değiştirilmiş kopyada 1 — hem imza hem zincir kırıklığı ayrı ayrı
-raporlandı.
+raporlandı. Aynı sınama, depo dışındaki paket klasöründe `dogrula.mjs` ile
+tekrarlandı ve aynı sonucu verdi (kırılan satır: 95).
+
+### Zincirin bugünkü kapsamı: 100 satırın 6'sı
+
+`verifyAuditChain` gerçek veritabanında `{ ok: true, chained: 6, preChain: 94 }`
+döndürüyor. Yani "denetim kaydı kurcalamaya karşı korumalı" cümlesi şu an
+satırların %6'sı için tam anlamıyla doğru; kalan 94 satır için arşivin verdiği
+güvence "arşiv üretildiği anda kayıt böyleydi" ile sınırlı. Zaman geçtikçe oran
+kendiliğinden düzelir. Demoda bu sayı olduğu gibi söylenmeli.
 
 ### Geriye dönük satırlar zincire alınmadı
 

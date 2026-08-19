@@ -819,22 +819,73 @@ satır numarasını kaydeder; veritabanı arşivin gerisine düşmüşse kurcala
 çözümü sık arşivlemektir. Bu sınır gizlenmiyor çünkü gizlenmesi yanlış güvence
 üretir.
 
+### Arşiv üretmek ve dışarı çıkarmak
+
+Arşiv üretmek tek başına hiçbir şey korumaz — koruma, arşivin makineden
+**dışarı çıkarılmış** olmasından gelir. Dışarı çıkmış bir arşiv geriye dönük
+değiştirilemez. Tek komut hem arşivi üretir hem denetçiye verilecek paketi
+hazırlar:
+
+```bash
+npm run arsivle -- <hedef-klasör>
+```
+
+Hedef klasöre dört dosya yazılır:
+
+```
+denetim-arsivi-<tarih>.json   imzalı arşiv
+acik-anahtar.pem              Ed25519 açık anahtarı
+dogrula.mjs                   bağımsız doğrulayıcı — tek dosya, kurulum yok
+OKUBENI.txt                   doğrulama talimatı + parmak izleri + sınırlar
+```
+
+Betik kopyayı **yazdıktan sonra doğrular**; doğrulama başarısızsa talimat
+dosyası hiç yazılmaz. Pakete güvenilmesini istiyorsak paketin kendisi
+sınanmalıdır.
+
+Sonra klasör makine dışına kopyalanır ve iki değer (açık anahtar parmak izi,
+arşiv SHA-256'sı) bilgisayardan **bağımsız** bir yere kaydedilir — denetimde
+karşılaştırılacak olan budur.
+
+Her arşiv bir öncekinin özetini taşır (`oncekiArsiv`), yani arşivlerin kendisi
+de zincirlenir: aradan bir arşivin çıkarılması fark edilir.
+
 ### Bağımsız doğrulama
 
 Kurcalanmış bir sunucunun kendi arşivini "geçerli" demesi hiçbir şey kanıtlamaz.
-Doğrulama başka bir makinede yapılır:
+Doğrulama başka bir makinede yapılır. İki yol var:
 
 ```bash
+# depoda, geliştirme sırasında
 npm run verify-archive -- <arşiv.json> <açık-anahtar.pem>
+
+# denetçide — depo yok, node_modules yok, kurulum yok
+node dogrula.mjs <arşiv.json> <açık-anahtar.pem>
 ```
 
-Bu betik veritabanına dokunmaz, sunucuya bağlanmaz, yalnızca `node:crypto`
-kullanır — arşiv ve açık anahtar herhangi bir Node kurulumuna kopyalanıp
-doğrulanabilir. Geçerli arşivde çıkış kodu 0, kurcalanmışta 1.
+İkisi **aynı kaynaktan** gelir: `dogrula.mjs`, `scripts/verify-archive.ts`'in
+esbuild ile paketlenmiş halidir. Mantık kopyalanmaz, yalnızca taşınabilir hale
+getirilir. Kaynak dosyanın kendisi `integrity.service`'i import ettiği için depo
+ve `tsx` olmadan çalışmaz; denetçinin elinde bunlar olmayacak.
+
+Doğrulayıcı veritabanına dokunmaz, sunucuya bağlanmaz, internete çıkmaz —
+yalnızca `node:*` modüllerine bağlıdır. Geçerli arşivde çıkış kodu 0,
+kurcalanmışta 1. Ölçüldü: bir denetim satırının yalnızca `role` alanını
+değiştirmek hem imzayı hem zinciri düşürüyor ve kırılan satırın numarası
+raporlanıyor.
 
 Açık anahtar **bağımsız edinilmelidir**: arşive gömülü anahtarla doğrulama,
 dosyanın kendi içinde tutarlı olduğunu gösterir ama kimin imzaladığını
-kanıtlamaz. Betik anahtar verilmediğinde bunu açıkça söyler.
+kanıtlamaz — saldırgan kendi anahtarıyla yeniden imzalayıp gömülü alanı da
+değiştirebilir. Betik anahtar verilmediğinde bunu açıkça söyler.
+
+### Özel anahtar nerede durmalı
+
+Özel anahtar varsayılan olarak `data/audit-signing.key` içinde, yani
+**veritabanıyla aynı klasörde**. Dosyaya erişen kişi ikisine birden erişir ve
+kendi arşivini imzalayabilir. `AUDIT_KEY_PATH` ile anahtar başka bir yere
+(çıkarılabilir sürücü, ayrı disk) alınabilir; asıl korunma yine açık anahtar
+parmak izinin bağımsız kaydıdır — değişmiş bir anahtar hemen fark edilir.
 
 ### Zincir öncesi satırlar
 

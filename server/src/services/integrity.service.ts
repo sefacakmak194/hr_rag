@@ -437,7 +437,7 @@ export interface ArchiveVerification {
  *
  * `expectedPublicKeyPem` verilmezse imza yalnizca GOMULU anahtarla dogrulanir;
  * bu, dosyanin kendi icinde tutarli oldugunu gosterir ama BASKASININ imzalamis
- * olma ihtimalini disllamaz. Gercek dogrulama icin anahtar bagimsiz edinilmeli.
+ * olma ihtimalini dislamaz. Gercek dogrulama icin anahtar bagimsiz edinilmeli.
  */
 export function verifyArchive(filePath: string, expectedPublicKeyPem?: string): ArchiveVerification {
   const raw = fs.readFileSync(filePath, 'utf-8');

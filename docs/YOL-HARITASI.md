@@ -6,7 +6,7 @@
 > bulabildiğim şey koda bırakılmış üç yorum satırıydı. Kırılgan — bu yüzden plan
 > buraya yazıldı ve her sprint sonunda güncelleniyor.
 
-Son güncelleme: **19.08.2026**, ilk imzalı arşivin üretilip dışarı çıkarılması.
+Son güncelleme: **19.08.2026**, paket temizliği ve ifade dayanıklılığı.
 
 ---
 
@@ -20,9 +20,10 @@ Son güncelleme: **19.08.2026**, ilk imzalı arşivin üretilip dışarı çıka
 | 3a | Denetim bütünlüğü (zincir + imzalı arşiv) | ✅ tamamlandı |
 | 3b | `.exe` kod imzalama | ⛔ sertifika bekliyor |
 | 4 | Politika boşluğu raporu | ✅ tamamlandı |
+| 4.5 | Paketleme + ifade dayanıklılığı | ✅ tamamlandı (planlanmamıştı) |
 | 5 | Sunum ve teslim | ⏳ |
 
-Doğrulama durumu: 14 test paketi · **CI yeşil** · eval **47/48**.
+Doğrulama durumu: 15 test paketi · **CI yeşil** · eval **51/52 (%98.1)**.
 
 ---
 
@@ -186,6 +187,48 @@ seçildi ve telafi olarak her kümeye en benzer diğer küme ekleniyor.
 
 - Bekleyen sürüm bildirimi: yürürlük tarihi geldiğinde indeks güncelleniyor ama
   kimseye haber verilmiyor.
+
+---
+
+## Sprint 4.5 — Paketleme ve ifade dayanıklılığı ✅
+
+Planlanmamıştı; `.exe` yeniden derlenirken çıktı ve Sprint 5'in önüne geçti.
+
+### Pakete giden veritabanı kişisel veri taşıyordu
+
+`build-exe.mjs` `data/vectors.db`'yi olduğu gibi kopyalıyordu. O dosya Sprint 1'den
+beri hesapları (parola özetleriyle), denetim kaydını ve Sprint 4'ten beri yanıtsız
+soru metinlerini de taşıyor. Mevcut paket bu sorunu taşımıyordu çünkü Sprint 1'den
+**önce** derlenmişti — yeniden derleme onu **yeni** getirecekti.
+
+Artık `VACUUM INTO` ile kopya alınıp temizleniyor; temizlik doğrulanmadan paket
+yazılmıyor. Bu derlemede silinen: `users:1 sessions:1 audit_log:101 unanswered:4`.
+
+### Geçen bir vaka, o ifadeyle geçtiğini gösterir
+
+Duman testinde mevcut iki geçen vakanın yeniden ifadesi düştü — ikisi de gerçek
+davranış, paketleme sorunu değil:
+
+| Soru | Eski sonuç |
+|---|---|
+| *"Şirket aracı tahsis ediliyor mu?"* | model "No" dedi |
+| *"Yıllık izin kaç gün?"* | talep süresini cevapladı |
+
+**Eşik yükseltmek çözmüyor, ölçüldü:** kapsam-içi en düşük 0.8408, kapsam-dışı en
+yüksek 0.8409, ayırım boşluğu **−0.0001**. Dağılımlar üst üste; şirket aracı sorusunu
+engelleyen her eşik meşru bir mobbing sorusunu da engeller. `RELEVANCE_MARGIN` ve
+boşluk kümelemesiyle aynı sınıf sonuç.
+
+İki ayrı çözüm:
+
+- **`scope.service.ts`** — `KAPSAM.md`'de zaten *bilerek* dışarıda bırakılmış konular
+  vektör aramasına hiç girmeden reddedilir. Dürüst sınır: bu bir sınır tanıma yeteneği
+  değil, bir liste; listede olmayan kapsam dışı soru yine eşiğe kalır.
+- **Kademe tablosunun tamamı** — kıdem verilmeyen "Yıllık izin kaç gün?" sorusuna tek
+  kademe seçmek uydurma olurdu; tablonun tamamı deterministik veriliyor. Usul soruları
+  hariç tutulur.
+
+Eval 47/50 → **51/52**. İki vaka artık 0.0 s (modele hiç gitmiyor).
 
 ---
 

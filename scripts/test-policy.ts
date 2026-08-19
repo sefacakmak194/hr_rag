@@ -65,7 +65,20 @@ const calcCases: { q: string; expect: string | null }[] = [
   { q: '1 yıllık çalışanın ihbar süresi kaç hafta?', expect: '4 hafta' },
   { q: '2 yıllık çalışanın ihbar süresi kaç hafta?', expect: '6 hafta' },
   { q: '5 yıllık çalışanın ihbar süresi kaç hafta?', expect: '8 hafta' },
-  // kidem verilmeyen genel sorular hesaplayiciya GIRMEMELI
+  // kidem verilmeyen MIKTAR sorusu -> tablonun TAMAMI
+  //
+  // Bu davranis rob-1 kusurundan sonra eklendi. Kidem verilmeyince RAG hatti
+  // devreye giriyordu ve cumle duzeyinde kanit secimi kademe satirlari yerine
+  // usul cumlesini seciyordu: "Yillik izin kac gun?" -> "En az 10 gun
+  // oncesinden ... talep olusturulmasi zorunludur." Uc kademeden birini secmek
+  // de uydurma olurdu; dogru cevap tablonun tamamidir.
+  { q: 'Yıllık izin kaç gün?', expect: '14 iş günü' },
+  { q: 'Yıllık izin ne kadar?', expect: '26 iş günü' },
+  { q: 'İhbar süresi ne kadar?', expect: '8 hafta' },
+  // ... ama USUL sorusu tabloya GITMEMELI: dogru bilgi, yanlis soru olurdu
+  { q: 'Yıllık izin talebini kaç gün önce yapmalıyım?', expect: null },
+  { q: 'Yıllık izin başvurusu nasıl yapılır?', expect: null },
+  // kidem verilmeyen ve miktar da sormayan genel sorular
   { q: 'Yıllık izin hakları nasıl belirlenir?', expect: null },
   { q: 'İhbar süresi nedir?', expect: null },
   // ilgisiz

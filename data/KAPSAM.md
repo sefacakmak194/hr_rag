@@ -32,6 +32,21 @@ Aşağıdaki konular korpusa **kasıtlı olarak** dahil edilmemiştir:
 Kapsam dışı bir soru geldiğinde sistem **LLM'e hiç gitmeden** deterministik alaka
 kapısıyla sabit yanıt döner (bkz. README, "Halüsinasyon engelleme").
 
+### Bu tablo kodda da karşılığı olan bir karardır
+
+Yukarıdaki üç konu — şirket aracı, hisse/opsiyon, yemekhane menüsü —
+`server/src/services/scope.service.ts` içinde de listelidir ve soru vektör aramasına
+**hiç girmeden** reddedilir.
+
+Sebebi ölçüldü: alaka kapısı tek bir benzerlik eşiği ve bu konuda yetmiyor.
+*"Şirket aracı tahsis ediliyor mu?"* 0.8409 alıyor (eşik 0.832) çünkü "araç" korpusta
+*gereç* anlamında geçiyor. Eşiği yükseltmek denendi — kapsam-içi en düşük 0.8408,
+kapsam-dışı en yüksek 0.8409; iki dağılım üst üste, eşikle çözülemiyor.
+
+**Bu tabloyu değiştirirseniz `scope.service.ts` listesini de güncelleyin.** İkisi
+ayrışırsa belge bir şey, sistem başka bir şey söyler. `npm run test:scope` listedeki
+konuların reddedildiğini *ve* kapsam içi soruların yanlışlıkla reddedilmediğini ölçer.
+
 ## Kaynak biçimi
 
 Korpus hem `.md` hem `.pdf` okur. `data/corpus/` kaynak markdown'ları,

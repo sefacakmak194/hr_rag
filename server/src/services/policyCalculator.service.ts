@@ -32,7 +32,32 @@ export interface PolicyTable {
   tiers: Tier[];
   /** Deterministik yanit cumlesini kurar. */
   render: (tenureLabel: string, tier: Tier) => string;
+  /**
+   * Kidem BELIRTILMEMIS soru icin tablonun tamamini veren yanit.
+   *
+   * "Yillik izin kac gun?" sorusunun tek bir dogru cevabi yok — cevap kidem
+   * kademesine bagli. Tek bir kademeyi secmek uydurma olur; dogru davranis
+   * tabloyu oldugu gibi vermektir.
+   */
+  renderAll: () => string;
+  /**
+   * Sorunun HAK MIKTARINI sordugunu gosteren ibareler. Konu anahtar kelimesi
+   * tek basina yetmiyor: "Yillik izin talebini kac gun ONCE yapmaliyim?" da
+   * "yillik izin" iceriyor ama cevabi tabloda degil, usul cumlesinde.
+   */
+  unitMarkers: string[];
 }
+
+/**
+ * Usul sorusu isaretleri — bunlardan biri geciyorsa soru hak miktarini degil
+ * SURECI soruyor ve normal RAG hattina gitmelidir.
+ *
+ * Olculdu: bu ayrim olmadan "Yillik izin talebini kac gun once yapmaliyim?"
+ * sorusu kademe tablosuyla cevaplaniyor — yani dogru bilgi, yanlis soruya.
+ */
+const PROCEDURE_MARKERS = [
+  'once', 'oncesinden', 'talep', 'basvuru', 'bildir', 'nasil', 'onay', 'kim ',
+];
 
 const Y = (years: number) => years * 12;
 
@@ -56,6 +81,13 @@ export const POLICY_TABLES: PolicyTable[] = [
     render: (tenure, tier) =>
       `${tenure} kıdemi olan bir çalışan ${tier.value} yıllık ücretli izin kullanabilir. ` +
       `Bu süre "${tier.label}" kademesi için geçerlidir.`,
+    unitMarkers: ['kac gun', 'kac is gunu', 'ne kadar', 'kac gundur', 'kac gunluk'],
+    renderAll: () =>
+      'Yıllık ücretli izin süresi kıdeme göre değişir: ' +
+      '1 yıldan 5 yıla kadar (5 yıl dahil) kıdemi olanlar 14 iş günü, ' +
+      '5 yıldan fazla 15 yıldan az kıdemi olanlar 20 iş günü, ' +
+      '15 yıl (dahil) ve daha fazla kıdemi olanlar 26 iş günü izin kullanabilir. ' +
+      'Kıdeminizi belirtirseniz size özel süreyi söyleyebilirim.',
   },
   {
     id: 'ihbar-suresi',
@@ -71,6 +103,14 @@ export const POLICY_TABLES: PolicyTable[] = [
     render: (tenure, tier) =>
       `${tenure} kıdemi olan bir çalışan için ihbar süresi ${tier.value}dır. ` +
       `Bu süre "${tier.label}" kademesi için geçerlidir.`,
+    unitMarkers: ['kac hafta', 'ne kadar', 'kac haftadir'],
+    renderAll: () =>
+      'İhbar süresi kıdeme göre değişir: ' +
+      '6 aydan az kıdemi olanlar için 2 hafta, ' +
+      '6 aydan 1,5 yıla kadar 4 hafta, ' +
+      '1,5 yıldan 3 yıla kadar 6 hafta, ' +
+      '3 yıldan fazla kıdemi olanlar için 8 haftadır. ' +
+      'Kıdeminizi belirtirseniz size özel süreyi söyleyebilirim.',
   },
 ];
 
@@ -157,17 +197,31 @@ export interface PolicyAnswer {
   answer: string;
   citation: { doc: string; section: string };
   tableId: string;
-  months: number;
+  /** Kidem belirtilmemis genel soruda null. */
+  months: number | null;
 }
 
 /**
  * Soru bir kademe hesabi mi? Oyleyse cevabi deterministik uretir.
  *
- * Iki kosul birlikte aranir:
- *   1) Konu anahtar kelimesi (yillik izin / ihbar suresi)
- *   2) Somut bir kidem suresi ("5 yillik", "18 ay")
- * Kidem verilmemisse null doner — "Yillik izin kac gun?" gibi genel sorular
- * normal RAG hattina gider ve tablonun tamami baglam olarak sunulur.
+ * Iki yol var:
+ *
+ *   1) Konu anahtar kelimesi + somut kidem ("5 yillik", "18 ay")
+ *      -> o kademenin cevabi.
+ *   2) Konu anahtar kelimesi + miktar sorusu, kidem YOK
+ *      -> tablonun TAMAMI. "Yillik izin kac gun?" sorusunun tek bir dogru
+ *         cevabi yoktur; tek kademe secmek uydurma olurdu.
+ *
+ * (2) NEDEN EKLENDI — bu davranis zaten tasarlanmisti ama gerceklesmiyordu.
+ * Kidem verilmeyen soru RAG hattina gidiyor ve "tablonun tamami baglam olarak
+ * sunulur" varsayiliyordu; oysa cumle duzeyinde kanit secimi tek cumle
+ * isaretliyor ve madde isaretli kademe satirlari kaybediyor: kademeler
+ * konusunu bir ust satirdan ("...haklari asagidaki gibidir:") aldigi icin
+ * "yillik" ve "izin" terimlerini TASIMIYOR, usul cumlesi ise ucunu birden
+ * tasiyor. Olculdu: "Yillik izin kac gun?" -> "En az 10 gun oncesinden IK
+ * Portali uzerinden talep olusturulmasi zorunludur." Dogru bilgi, yanlis soru.
+ *
+ * Usul sorulari (PROCEDURE_MARKERS) bu yoldan HARIC tutulur.
  */
 export function calculatePolicyAnswer(message: string): PolicyAnswer | null {
   const t = normalize(message);
@@ -176,7 +230,19 @@ export function calculatePolicyAnswer(message: string): PolicyAnswer | null {
   if (!table) return null;
 
   const tenure = extractTenure(message);
-  if (!tenure) return null;
+
+  if (!tenure) {
+    const usul = PROCEDURE_MARKERS.some((m) => t.includes(m));
+    const miktar = table.unitMarkers.some((m) => t.includes(m));
+    if (usul || !miktar) return null;
+
+    return {
+      answer: table.renderAll(),
+      citation: { doc: table.sourceDoc, section: table.sourceSection },
+      tableId: table.id,
+      months: null,
+    };
+  }
 
   const tier = findTier(table, tenure.months);
   if (!tier) return null;

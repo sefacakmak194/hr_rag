@@ -7,6 +7,7 @@ import { currentVersionsFor } from '../services/versioning.service.js';
 import { recordGap } from '../services/policyGap.service.js';
 import type { Principal } from '../services/identity.service.js';
 import { classifyIntent } from '../services/intent.service.js';
+import { checkOutOfScope } from '../services/scope.service.js';
 import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
 import { selectEvidence } from '../services/evidence.service.js';
 import { rerankByPolarity } from '../services/polarity.service.js';
@@ -207,6 +208,40 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
 
     if (intent.kind !== 'rag' && intent.response) {
       return respondDirectly(intent.response, [], { intent: intent.kind }, message);
+    }
+
+    // 0a'. KASITLI kapsam disi konular — vektor aramasina HIC girmez.
+    //
+    // Alaka kapisi tek bir kosinus esigi ve OLCULDU ki bu konuda yetmiyor:
+    // "Sirket araci tahsis ediliyor mu?" 0.8409 aliyor (esik 0.832) cunku
+    // "arac" korpusta GEREC anlaminda geciyor. Esigi yukseltmek denendi ve
+    // calismiyor — kapsam-ici en dusuk 0.8408, kapsam-disi en yuksek 0.8409;
+    // iki dagilim tam ustuste (bkz. scope.service dosya basi).
+    //
+    // KAPSAM.md bu konularin neden disarida oldugunu zaten yaziyor; bu bir
+    // kurumsal karar ve benzerlik skoruna birakilmamali.
+    //
+    // RESOLVED query DEGIL, kullanicinin YENI mesaji kontrol edilir: takip
+    // cozumlemesi onceki turu de tasir ve bir onceki soru kapsam disiysa
+    // sonraki mesru soru da yanlislikla reddedilirdi (multi-4'un olctugu
+    // bulasma sorununun aynisi).
+    const disKapsam = checkOutOfScope(message);
+    if (disKapsam) {
+      send({ citations: [], basis: null, outOfScope: disKapsam.topicId }, 'metadata');
+      send({ token: NO_CONTEXT_RESPONSE });
+      res.write('data: [DONE]\n\n');
+      recordTurn(session.id, {
+        question: message,
+        resolvedQuestion: message,
+        answer: NO_CONTEXT_RESPONSE,
+        citations: [],
+      });
+      // answered = false: mevzuattan yanit uretilmedi.
+      audit([], false);
+      // POLITIKA BOSLUGU KAYDEDILMEZ — bilerek disarida birakilmis bir konu
+      // "eksik politika" degildir. Rapora dusseydi IK'ya zaten verilmis bir
+      // karari tekrar tekrar sorardi.
+      return res.end();
     }
 
     // 0a. Takip sorusu cozumlemesi.

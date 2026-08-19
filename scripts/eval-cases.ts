@@ -118,22 +118,19 @@ export const cases: EvalCase[] = [
 
   // --- ifade degisimine dayaniklilik ---
   //
-  // Ikisi de MEVCUT vakalarin yeniden ifade edilmis hali ve ikisi de gecmiyor.
-  // Paketlenmis .exe duman testinde bulundu; gelistirme sunucusunda birebir
-  // ayni sonucu verdiler, yani paketleme sorunu DEGIL.
+  // Ikisi de MEVCUT gecen vakalarin yeniden ifade edilmis hali ve ikisi de
+  // DUSUYORDU. Paketlenmis .exe duman testinde bulundular; gelistirme
+  // sunucusunda birebir ayni sonucu verdiler, yani paketleme sorunu degildi.
+  // Bir ifadeye gore gecen bir sistem, gecmis sayilmaz.
   {
     id: 'rob-1',
     group: 'Dayanıklılık',
     question: 'Yıllık izin kaç gün?',
-    must: ['14 iş günü'],
+    // Kidem verilmedigi icin TEK bir kademe dogru cevap degil; tablonun
+    // tamami beklenir. Talep suresi cumlesi ("10 gun oncesinden") ise
+    // dogru bilgi ama YANLIS soruya cevaptir.
+    must: ['14 iş günü', '20 iş günü', '26 iş günü'],
     mustNot: ['10 gün öncesinden'],
-    expectDoc: '01_calisma_saatleri_ve_izinler.md',
-    known:
-      'Dogru BOLUMU buluyor (Madde 2, skor 0.8839) ama cumle duzeyinde kanit secimi ' +
-      'hak tablosu yerine TALEP SURESI cumlesini seciyor; yanit "en az 10 gun oncesinden ' +
-      'IK Portali..." oluyor. Kidem tablosu madde isaretli satirlarda; talep cumlesi ise ' +
-      'duz cumle ve hem "yillik izin" hem "gun" iceriyor. spec-1 ayni konuyu kidem ' +
-      'belirterek soruyor ve deterministik hesaplayiciya gittigi icin geciyor.',
   },
   {
     id: 'rob-2',
@@ -141,11 +138,23 @@ export const cases: EvalCase[] = [
     question: 'Şirket aracı tahsis ediliyor mu?',
     must: ['bilgi bulunmamaktadır'],
     expectDoc: null,
-    known:
-      'spec-3 ("Sirket bana ozel arac tahsisi yapiyor mu?") geciyor ama bu yeniden ' +
-      'ifade alaka kapisini asiyor: "arac" kelimesi "lisanssiz ARAC kullanimi" (gerec ' +
-      'anlaminda) ile eslesiyor, skor 0.8409 > 0.832. Model "No" diyor — ustelik ' +
-      'Ingilizce. Sartnamenin halusinasyon testi bu haliyle DUSUYOR.',
+  },
+  // Usul sorusu kademe tablosuna KACMAMALI: dogru bilgi, yanlis soru olurdu.
+  {
+    id: 'rob-3',
+    group: 'Dayanıklılık',
+    question: 'Yıllık izin talebini kaç gün önce yapmalıyım?',
+    must: ['10'],
+    mustNot: ['14 iş günü'],
+    expectDoc: '01_calisma_saatleri_ve_izinler.md',
+  },
+  // "arac" GEREC anlaminda — kapsam disi listesi bunu YAKALAMAMALI.
+  {
+    id: 'rob-4',
+    group: 'Dayanıklılık',
+    question: 'Lisanssız araç kullanımı yasak mı?',
+    must: ['yasak'],
+    mustNot: ['bilgi bulunmamaktadır'],
   },
 
   // --- sohbet ---

@@ -52,10 +52,24 @@ const inScope = [
   'Tedarikçiden hediye kabul edebilir miyim?',
   'Haftada kaç gün uzaktan çalışabilirim?',
   'Harcırah masraf fişlerimi kaç gün içinde yüklemeliyim?',
+  // Kisa/genel ifadeler — kalibrasyon kumesi uzun ve acik sorulardan olusursa
+  // esik gercekte karsilasilan kisa sorulara gore fazla yuksek cikar.
+  'Yıllık izin kaç gün?',
+  'İhbar süresi ne kadar?',
+  'Mesai saatleri ne?',
+  'Kıdem tazminatı alabilir miyim?',
 ];
 
 const outOfScope = [
   'Şirket bana özel araç tahsisi yapıyor mu?', // sartname Soru 3 — kapsam disi KALMALI
+  // AYNI SORUNUN YENIDEN IFADELERI. Tek bir ifadeye gore kalibre edilen esik,
+  // ifade degisince duser: "Sirket araci tahsis ediliyor mu?" olculdugunde
+  // 0.8409 aliyordu ve esigi (0.832) asiyordu — sartnamenin halusinasyon
+  // testi yeniden ifade karsisinda coktu. Kalibrasyon kumesi gercek ifade
+  // cesitliligini temsil etmezse olctugu sey de gercek degildir.
+  'Şirket aracı tahsis ediliyor mu?',
+  'Şirket araba veriyor mu?',
+  'Bana makam aracı çıkar mı?',
   'Hisse senedi opsiyonu alabilir miyim?',
   'Yemekhanede bugün ne var?',
   'İstanbul hava durumu nasıl?',

@@ -199,7 +199,7 @@ bir hesap kullanılır (bkz. `scripts/eval-auth.ts`, `scripts/eval-sandbox.ts`).
 | `test:rag` | 70 test — 24 niyet, 14 takip sorusu, 32 retrieval |
 | `test:pdf` | 20 doküman — PDF metin çıkarımı sadakati |
 | `eval` | 48 uçtan uca cevap doğruluğu ölçümü |
-| `compare` | aynı 48 vaka × birden çok model — doğruluk/gecikme matrisi |
+| `compare` | aynı vaka kümesi × birden çok model — doğruluk/gecikme matrisi |
 
 Pakette şunlar var: şartname Bölüm 6 / Adım 3 kabul soruları, 8 İK alanının tamamını
 kapsayan retrieval regresyonları, kapsam dışı reddetme senaryoları ve niyet sınıflandırma
@@ -246,10 +246,10 @@ için doğru ürün davranışı da budur: aynı soruya aynı yanıt.
 > `amb-6` (aday başvurusu saklama süresi) sınırda duran bir vaka ve zaman zaman
 > düşüyor. Sebep sıcaklık değil: GPU çıkarımı bit düzeyinde tekrarlanabilir değil,
 > logit'ler birbirine çok yakın olduğunda sıralama değişebiliyor. Daemon yeniden
-> başlatıldığında da benzer bir kayma görülüyor. Yani **ölçüm bandı 46–47/48**,
-> tek bir sayı değil.
+> başlatıldığında da benzer bir kayma görülüyor. Yani ölçüm **bir bant**, tek bir
+> sayı değil.
 
-**Güncel durum: 46–47/48.** Sabit olarak açık kalan vaka:
+**Güncel durum: 51/52 (%98.1).** Sabit olarak açık kalan vaka:
 
 > **amb-4** — *"Bordro itirazımı kaç gün içinde yapmalıyım?"* Kanıt seçimi doğru cümleyi
 > işaretliyor (*"…15 gün içinde İK departmanına yazılı başvuruda bulunur"*) ama model
@@ -358,6 +358,69 @@ Nedeni: korpus çeşitlendikçe herhangi bir sorgunun ortalama benzerliği düş
 marj **tüm** sorgular için şişer. Yani bu ölçüt korpus **büyüklüğüne** duyarlıdır.
 Açık bırakılsaydı gerçek İK sorularını reddetmeye başlayacaktı. `RELEVANCE_MARGIN`
 varsayılan olarak `0` (kapalı); yeniden açmadan önce kalibrasyonla doğrulayın.
+
+### İfade değişimine dayanıklılık — ölçülmüş bir sınır
+
+Geçen bir vaka, **o ifadeyle** geçtiğini gösterir. Paketlenmiş `.exe` duman testinde
+mevcut iki geçen vakanın yeniden ifade edilmiş hali düştü:
+
+| Soru | Sonuç |
+|---|---|
+| *"Şirket bana özel araç tahsisi yapıyor mu?"* (şartname Soru 3) | geçiyordu |
+| *"Şirket aracı tahsis ediliyor mu?"* | **model "No" dedi** |
+| *"5 yıllık çalışan kaç gün yıllık izin kullanabilir?"* | geçiyordu |
+| *"Yıllık izin kaç gün?"* | **talep süresini cevapladı** |
+
+İkisi de aynı veritabanıyla geliştirme sunucusunda birebir tekrarlandı — paketleme
+sorunu değil, gerçek davranış.
+
+**Eşik yükseltmek çözmüyor, ölçüldü.** Kalibrasyon kümesine yeniden ifadeler eklendi
+(`npm run calibrate`, 38 kapsam-içi / 13 kapsam-dışı):
+
+```
+kapsam-içi  en düşük : 0.8408   "Mobbing bildirimini nereye yapabilirim?"
+kapsam-dışı en yüksek: 0.8409   "Şirket aracı tahsis ediliyor mu?"
+ayırım boşluğu       : −0.0001
+```
+
+İki dağılım tam üst üste. Şirket aracı sorusunu engelleyen **her** eşik, meşru bir
+mobbing sorusunu da engeller. Bu, `RELEVANCE_MARGIN` ve boşluk kümeleme eşiğiyle aynı
+sınıf bir sonuç: tek sayı yetmiyor.
+
+Skorun yüksek olma sebebi anlam değil **kelime**: "araç" korpusta *"lisanssız araç
+kullanımı"* (gereç anlamında) ve *"tahsis edilen dizüstü bilgisayar"* cümlelerinde
+geçiyor.
+
+#### Kasıtlı kapsam dışı konular deterministik reddedilir
+
+`data/KAPSAM.md` hangi konuların **bilerek** dışarıda bırakıldığını ve gerekçesini
+zaten yazıyor. Bu bir kurumsal karardır; benzerlik skoruna bırakılmamalı.
+`scope.service.ts` o kararı koda taşır — listedeki bir konu geçerse soru vektör
+aramasına **hiç girmez**, sabit yanıt döner (0.0 s, modele gitmeden).
+
+**Dürüst sınır: bu bir sınır tanıma yeteneği değil, bir liste.** Yalnızca yazılmış
+konuları yakalar; listede olmayan bir kapsam dışı soru yine eşiğe kalır ve eşik —
+yukarıda ölçüldüğü gibi — tek başına yeterli değil. Kapsam kararı değiştikçe liste
+`KAPSAM.md` ile birlikte güncellenmelidir.
+
+Kalıplar **dar** tutuldu: yalnız "araç" yasaklansaydı *"Lisanssız araç kullanabilir
+miyim?"* (disiplin yönetmeliğinde geçen, kapsam **içi** bir soru) da reddedilirdi.
+`test:scope` bunu iki yönlü ölçer — listedekileri yakalamak *ve* kapsam içi soruları
+yakalamamak.
+
+#### Kıdem verilmeyen kademe sorusu: tablonun tamamı
+
+*"Yıllık izin kaç gün?"* sorusunun tek doğru cevabı yok — cevap kıdem kademesine bağlı.
+Bir kademe seçmek uydurma olurdu. Kademeli politika hesaplayıcısı artık kıdem
+verilmediğinde **tablonun tamamını** deterministik olarak veriyor.
+
+Kök neden ilginç: madde işaretli kademe satırları konusunu bir üst satırdan
+(*"…hakları aşağıdaki gibidir:"*) alıyor, bu yüzden "yıllık" ve "izin" terimlerini
+taşımıyorlar; usul cümlesi ise üçünü birden taşıyor ve cümle düzeyinde kanıt seçimini
+kazanıyor. Doğru bilgi, yanlış soru.
+
+Usul soruları (`önce`, `talep`, `başvuru`, `nasıl`, `onay`) bu yoldan **hariç** tutulur,
+yoksa *"Yıllık izin talebini kaç gün önce yapmalıyım?"* kademe tablosuyla cevaplanırdı.
 
 ### Hibrit arama (vektör + BM25)
 

@@ -55,6 +55,21 @@ export const CORPUS_DIR = process.env.CORPUS_DIR
   ? path.resolve(process.env.CORPUS_DIR)
   : path.join(REPO_ROOT, 'data', 'corpus');
 /**
+ * Ileri tarihli (bekleyen) surumlerin bekleme dizini — Sprint 2.
+ *
+ * NEDEN AYRI DIZIN: korpus dizini her zaman YURURLUKTEKI metni icermelidir.
+ * 1 Eylul'de yururluge girecek bir yonerge bugunden korpusa konsaydi, sistem
+ * henuz yururlukte olmayan bir kurala gore cevap verirdi. Yururluk tarihi
+ * gelince dosya buradan korpusa TASINIR (bkz. corpusSync.service).
+ *
+ * CORPUS_DIR'den turetilir: testler korpusu degistirdiginde bekleme dizini de
+ * kendiliginden yalitilir.
+ */
+export const PENDING_DIR = process.env.PENDING_DIR
+  ? path.resolve(process.env.PENDING_DIR)
+  : path.join(path.dirname(CORPUS_DIR), `${path.basename(CORPUS_DIR)}-pending`);
+
+/**
  * Vektor veritabani. CORPUS_DIR gibi ortam degiskeniyle degistirilebilir —
  * dokuman yukleme gibi indeksi YENIDEN KURAN akislari, gercek korpusa
  * dokunmadan ayri bir kopyada denemek icin gerekli.

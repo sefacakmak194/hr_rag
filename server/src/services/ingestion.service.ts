@@ -3,19 +3,50 @@ import path from 'node:path';
 import { extractChunks } from './chunker.js';
 import { readDocument, selectIndexableFiles } from './documentReader.service.js';
 import { generateEmbedding } from './embedding.service.js';
-import { insertChunk, resetStore, countChunks, resetLexicalIndex } from './vectorStore.service.js';
+import { insertChunk, resetStore, countChunks, resetLexicalIndex, getDb } from './vectorStore.service.js';
+import { upsertDocumentMeta } from './identity.service.js';
+import { recordVersion } from './versioning.service.js';
 import { CHUNK_SIZE, CHUNK_OVERLAP } from '../config/constants.js';
 
+export interface IngestedFile {
+  file: string;
+  chunks: number;
+  /** Bu dosyanin yururlukteki surum numarasi. */
+  version: number;
+  /** Bu kosumda YENI surum acildi mi? (icerik degismisse) */
+  versionCreated: boolean;
+}
+
 export interface IngestionReport {
-  files: { file: string; chunks: number }[];
+  files: IngestedFile[];
   totalChunks: number;
+  /** Bu kosumda surum acilan dokumanlar. */
+  changed: string[];
+}
+
+export interface IngestionOptions {
+  /** Surum kaydina yazilacak kullanici adi. Betiklerde 'sistem'. */
+  actor?: string;
+  /**
+   * Dosya adina gore surum ustverisi. YALNIZCA yeni surum acilirsa kullanilir;
+   * icerik degismemisse not ve tarih bir sey ifade etmez.
+   */
+  versionMeta?: Record<string, { note?: string; effectiveFrom?: string }>;
 }
 
 /**
  * Korpus dizinindeki tum .md dokumanlarini parcalara ayirir, yerel embedding
  * uretir ve vektor veritabanina yazar. Tamamen cevrim disi calisir.
+ *
+ * SURUMLEME (Sprint 2): her dosyanin metni indekslenmeden once surum kaydina
+ * verilir. Icerik ozeti yururlukteki surumden farkliysa yeni surum acilir.
+ * Boylece korpus dizinine ELLE kopyalanan bir dosya da gecmise yazilir —
+ * surum gecmisi arayuzden gecilmis olmaya degil, INDEKSLENMIS OLANA dayanir.
  */
-export async function runIngestion(corpusDir: string): Promise<IngestionReport> {
+export async function runIngestion(
+  corpusDir: string,
+  options: IngestionOptions = {},
+): Promise<IngestionReport> {
   if (!fs.existsSync(corpusDir)) {
     throw new Error(`Korpus dizini bulunamadi: ${corpusDir}`);
   }
@@ -33,7 +64,9 @@ export async function runIngestion(corpusDir: string): Promise<IngestionReport> 
   resetStore();
   resetLexicalIndex();
 
-  const report: IngestionReport = { files: [], totalChunks: 0 };
+  const report: IngestionReport = { files: [], totalChunks: 0, changed: [] };
+  const db = getDb();
+  const actor = options.actor ?? 'sistem';
 
   for (const file of files) {
     const filePath = path.join(corpusDir, file);
@@ -47,6 +80,20 @@ export async function runIngestion(corpusDir: string): Promise<IngestionReport> 
     if (read.source === 'pdf-ocr') {
       console.log(`[Ingest OCR]: ${file} (taranmis PDF, metin OCR ile cikarildi)`);
     }
+
+    // SURUM KAYDI — indekslemeden ONCE. Sebep: indeksleme yarida kalirsa
+    // (embedding hatasi, disk dolmasi) surum kaydi yine de dogru olsun;
+    // korpustaki dosya zaten degismis durumda.
+    const { row: version, created } = recordVersion(db, {
+      docTitle: file,
+      content,
+      source: read.source,
+      bytes: fs.statSync(filePath).size,
+      actor,
+      ...options.versionMeta?.[file],
+    });
+    upsertDocumentMeta(db, file, read.source);
+    if (created) report.changed.push(file);
 
     // Markdown basliklarina gore akilli chunking (350 token, 50 overlap)
     const chunks = extractChunks(content, { chunkSize: CHUNK_SIZE, overlap: CHUNK_OVERLAP });
@@ -70,8 +117,10 @@ export async function runIngestion(corpusDir: string): Promise<IngestionReport> 
       });
     }
 
-    report.files.push({ file, chunks: chunks.length });
-    console.log(`[Ingest Complete]: ${file} (${chunks.length} chunks indexed)`);
+    report.files.push({ file, chunks: chunks.length, version: version.version, versionCreated: created });
+    console.log(
+      `[Ingest Complete]: ${file} (${chunks.length} chunks indexed · s${version.version}${created ? ' YENİ' : ''})`,
+    );
   }
 
   report.totalChunks = countChunks();

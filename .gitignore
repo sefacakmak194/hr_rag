@@ -9,6 +9,11 @@ dist-app/
 # Uretilen vektor indeksi — `npm run ingest` ile yeniden olusturulur
 data/vectors.db
 
+# Ileri tarihli politika surumlerinin bekleme dizini (Sprint 2).
+# Calisma zamani durumudur: dosyalar yururluk tarihi gelince korpusa TASINIR.
+# Depoya girerse her klonda "bekleyen surum" gorunur ve indeks yanlis kurulur.
+data/corpus-pending/
+
 # Embedding modeli onbellegi
 .cache/
 

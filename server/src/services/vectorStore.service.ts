@@ -13,6 +13,7 @@ import {
 import { cosineSimilarity } from './embedding.service.js';
 import { Bm25Index } from './lexical.service.js';
 import { ensureIdentitySchema, labelFilter, type Principal, type Role } from './identity.service.js';
+import { ensureVersionSchema } from './versioning.service.js';
 
 export interface ChunkRecord {
   docTitle: string;
@@ -64,6 +65,10 @@ export function getDb(): DatabaseSync {
     // Kimlik, erisim etiketi ve denetim tablolari (Sprint 1). Ayri dosyada
     // tutuluyor; burasi vektor deposu, orasi kimlik katmani.
     ensureIdentitySchema(db);
+
+    // Politika surumleri (Sprint 2). `documents` tablosuna baglidir, o yuzden
+    // kimlik semasindan SONRA kurulur.
+    ensureVersionSchema(db);
   }
   return db;
 }

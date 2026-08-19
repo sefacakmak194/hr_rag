@@ -161,6 +161,49 @@ export function ensureIdentitySchema(db: DatabaseSync): void {
   `);
 }
 
+// ---------------------------------------------------------------- dokuman
+
+/**
+ * Dokuman ustverisini yazar/gunceller (indeksleme sirasinda cagrilir).
+ *
+ * DIKKAT — `access_label` catisma durumunda KORUNUR. Yeniden indeksleme her
+ * degisiklikte kosuyor; etiketi de yazsaydik yoneticinin verdigi her etiket
+ * ilk yuklemede sessizce `genel`e donerdi.
+ */
+export function upsertDocumentMeta(
+  db: DatabaseSync,
+  docTitle: string,
+  source: string,
+  indexedAt: string = new Date().toISOString(),
+): void {
+  db.prepare(
+    `INSERT INTO documents (doc_title, access_label, source, indexed_at)
+     VALUES (?, 'genel', ?, ?)
+     ON CONFLICT(doc_title) DO UPDATE SET source = excluded.source, indexed_at = excluded.indexed_at`,
+  ).run(docTitle, source, indexedAt);
+}
+
+/**
+ * Erisim etiketini degistirir.
+ *
+ * Sprint 1'de etiket semasi ve zorlamasi yazildi ama etiketi ATAYACAK bir yol
+ * kalmadi: tablo yalnizca dogrudan SQL ile doldurulabiliyordu. Surum gecmisi
+ * de ayni etikete bagli oldugu icin bu bosluk Sprint 2'de kapatiliyor.
+ *
+ * Cagiran taraf BM25 indeksini sifirlamalidir — havuz role gore daraldigi icin
+ * etiket degisimi sozcuk istatistigini de degistirir.
+ */
+export function setAccessLabel(db: DatabaseSync, docTitle: string, label: AccessLabel): void {
+  if (!ACCESS_LABELS.includes(label)) {
+    throw new Error(`Geçersiz erişim etiketi: ${label}`);
+  }
+  db.prepare(
+    `INSERT INTO documents (doc_title, access_label, source, indexed_at)
+     VALUES (?, ?, 'bilinmiyor', ?)
+     ON CONFLICT(doc_title) DO UPDATE SET access_label = excluded.access_label`,
+  ).run(docTitle, label, new Date().toISOString());
+}
+
 // ---------------------------------------------------------------- kullanici
 
 export interface UserRow {

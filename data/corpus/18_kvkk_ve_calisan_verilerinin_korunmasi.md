@@ -17,3 +17,12 @@ Kişisel veri ihlali şüphesi taşıyan durumlar derhal Bilgi Güvenliği birim
 
 ## Madde 6: İş Yeri İzleme
 Şirket bilgisayarlarındaki kurumsal e-posta ve internet kullanımı, bilgi güvenliği amacıyla ve önceden bilgilendirme yapılarak izlenebilir. İzleme faaliyeti kişisel içeriklere yönelik değildir ve ölçülülük ilkesine uygun yürütülür.
+
+## Madde 7: Açık Rıza ve Rızanın Geri Çekilmesi
+Çalışanın kişisel verilerinin bir kısmı iş sözleşmesinin ifası ve kanuni yükümlülükler kapsamında işlenir; bu işlemeler için ayrıca açık rıza aranmaz ve çalışan bunlara rıza vermek zorunda değildir. Açık rıza yalnızca zorunlu olmayan işlemeler için istenir; örneğin çalışan fotoğrafının tanıtım amacıyla kullanılması buna dâhildir. Açık rıza her zaman geri çekilebilir; geri çekme talebi kvkk@sirket.local adresine iletilir ve geri çekme ileriye etkili sonuç doğurur. Rızanın geri çekilmesi, çalışan aleyhine hiçbir sonuç doğurmaz.
+
+## Madde 8: Çalışan Görselinin Kullanımı
+Çalışanın fotoğrafı ve videosu; şirket internet sitesi, sosyal medya hesapları ve tanıtım materyallerinde yalnızca açık rızası alınarak kullanılabilir. Kurumsal kimlik kartı ve iç rehber fotoğrafı bu kapsamda değildir ve iş ilişkisinin yürütülmesi amacıyla işlenir. Rızanın geri çekilmesi hâlinde görsel, geri çekme tarihinden itibaren 30 gün içinde yayından kaldırılır.
+
+## Madde 9: Kamera Kayıtlarına Erişim Yetkisi
+İş yerinde güvenlik amacıyla kamera bulunmaktadır; kameralar bina giriş çıkışları ve ortak alanlarda konumlandırılmıştır. Soyunma odası, dinlenme odası ve tuvalet gibi mahremiyet alanlarında kamera bulunmaz. Kamera kayıtlarına yalnızca Bilgi Güvenliği yöneticisi ve İdari İşler müdürü erişebilir; erişim her defasında gerekçesiyle birlikte kayıt altına alınır. Kayıtların saklanma süresi için Madde 2'ye bakınız.

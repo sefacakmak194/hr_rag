@@ -310,7 +310,7 @@ Bu projede sezgiyle alınmış karar yok denecek kadar az; çoğunun arkasında 
 | Karar | Nerede |
 |---|---|
 | Varsayılan model (`qwen2.5-1.5b`) | `data/MODEL-KARSILASTIRMA.md` |
-| Eşik 0.832, hibrit ağırlık 0.05 | `config/constants.ts` + `scripts/calibrate.ts` |
+| Eşik 0.828, hibrit ağırlık 0.05 | `config/constants.ts` + `scripts/calibrate.ts` |
 | Sıcaklık 0 (0.1 değil) | `foundryClient.service.ts` |
 | Marj ölçütünün kaldırılması | `constants.ts`, `RELEVANCE_MARGIN` |
 | Ayrıntının modelden değil koddan gelmesi | `constants.ts`, 2. kural notu |

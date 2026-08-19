@@ -4,7 +4,7 @@ Bu belge, RAG asistanının **neye cevap vermesi beklendiğini** ve **neyi bilin
 kapsam dışı bıraktığını** tanımlar. Korpusa dahil değildir (indekslenmez); yalnızca
 tasarım kararını kayda geçirir.
 
-## Kapsam içi — 20 doküman / 8 alan
+## Kapsam içi — 22 doküman / 10 alan
 
 | Alan | Dokümanlar | Örnek sorular |
 |---|---|---|
@@ -15,7 +15,9 @@ tasarım kararını kayda geçirir.
 | **Performans ve gelişim** | 13, 14 | Değerlendirme dönemleri, terfi kriterleri, itiraz, eğitim bütçesi, mentorluk, dil desteği |
 | **Disiplin ve etik** | 02, 20 | Disiplin kademeleri, devamsızlık, savunma hakkı, hediye politikası, alkol yasağı |
 | **İSG ve sağlık** | 11, 17 | İSG eğitimi, iş kazası bildirimi, koruyucu donanım, tahliye, ergonomi, periyodik muayene |
-| **Uyum ve işyeri ortamı** | 18, 19, 04 | KVKK, veri saklama süreleri, veri ihlali, mobbing, ayrımcılık, şikâyet kanalları, uzaktan çalışma, ekipman güvenliği |
+| **Uyum ve işyeri ortamı** | 18, 19, 04 | KVKK, veri saklama süreleri, veri ihlali, açık rıza, kamera, mobbing, ayrımcılık, anonim şikâyet, uzaktan çalışma, ekipman güvenliği |
+| **Bilgi güvenliği ve BT** | 21 | Parola/şifre, iki faktörlü doğrulama, USB ve bulut kullanımı, halka açık Wi-Fi, cihaz kaybı, yapay zekâ araçları, yazılım lisansı |
+| **Sürdürülebilirlik ve çalışan katılımı** | 22 | Sürdürülebilirlik politikası, geri dönüşüm, gönüllülük izni, sosyal sorumluluk, memnuniyet anketi, öneri sistemi, İK'ya erişim |
 
 ## Kapsam dışı — bilinçli kararlar
 
@@ -39,7 +41,7 @@ Yukarıdaki üç konu — şirket aracı, hisse/opsiyon, yemekhane menüsü —
 **hiç girmeden** reddedilir.
 
 Sebebi ölçüldü: alaka kapısı tek bir benzerlik eşiği ve bu konuda yetmiyor.
-*"Şirket aracı tahsis ediliyor mu?"* 0.8409 alıyor (eşik 0.832) çünkü "araç" korpusta
+*"Şirket aracı tahsis ediliyor mu?"* eşiği aşıyordu çünkü "araç" korpusta
 *gereç* anlamında geçiyor. Eşiği yükseltmek denendi — kapsam-içi en düşük 0.8408,
 kapsam-dışı en yüksek 0.8409; iki dağılım üst üste, eşikle çözülemiyor.
 
@@ -62,6 +64,29 @@ karşılanır ve anında döner.
 
 Kapsam **dışı gerçek sorular** için sabit "bilgi bulunmamaktadır" yanıtı korunur —
 yani sohbet desteği halüsinasyon engellemesini zayıflatmaz.
+
+## Kapsam 19.08.2026'da genişletildi
+
+10.000 soruluk tarama (`npm run sweep`) korpusun gerçek İK soru yüzeyinin ancak
+yarısını karşıladığını gösterdi: 495 temel sorudan **119'u hiçbir ifadeyle**
+cevaplanamıyordu. Eksikler kapatıldı — 20 doküman / 94 bölümden **22 doküman /
+170 bölüme** çıkıldı.
+
+Eklenenler: bilgi güvenliği ve BT kullanımı (21), sürdürülebilirlik ve çalışan
+katılımı (22); mevcut dokümanlara ise sigara/kimlik kartı/sosyal medya/akrabalık
+(02), esnek çalışma/servis/çay molası (01), meslek hastalığı/ilk yardım/çalışan
+destek programı (17), açık rıza/görsel kullanımı (18), anonim bildirim/ihbarcı
+koruması (19) ve diğerleri.
+
+Sonuç ölçüldü: cevaplanma oranı **%50.5 → %83.1**, hiçbir ifadeyle cevaplanamayan
+soru **119 → 4**. Kapsam dışı sızıntı **0** kaldı; değerlendirme paketi 51/52'de
+sabit durdu.
+
+> Genişletme sırasında iki gerçek regresyon yakalandı ve düzeltildi: yeni "Çay
+> Molası" maddesi "Öğle molası saat kaçta?" sorusunu çalıyordu, yeni kamera
+> maddesi ise saklama süresini tekrarlayarak Madde 2'yi geçiyordu. Korpus
+> denetimi (`npm run test:audit`) ayrıca çelişkili bir süre yakaladı. Bu üçü,
+> aşağıdaki uyarının neden orada olduğunun kanıtıdır.
 
 ## Kapsamı genişletirken
 

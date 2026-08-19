@@ -16,6 +16,7 @@
  */
 import { generateQueryEmbedding } from '../server/src/services/embedding.service.js';
 import { scoreAllChunks, countChunks, SYSTEM_PRINCIPAL } from '../server/src/services/vectorStore.service.js';
+import { checkOutOfScope } from '../server/src/services/scope.service.js';
 
 const inScope = [
   'Öğle molası saat kaçta?',
@@ -81,6 +82,20 @@ const outOfScope = [
   'Bana bir şiir yaz',
 ];
 
+/**
+ * KAPSAM DISI LISTESINDEKILER OLCUMDEN CIKARILIR.
+ *
+ * `scope.service` bu konulari vektor aramasina GIRMEDEN reddediyor; yani
+ * skorlari alaka kapisini hic ilgilendirmiyor. Listede kaldiklarinda olcum,
+ * kapinin gercekte cozmesi gerekmeyen bir sorunu cozemiyormus gibi gorunuyor:
+ * "Sirket araci tahsis ediliyor mu?" 0.8423 ile kapsam-disi maksimumu tek
+ * basina yukari cekiyor, oysa o soru kapiya hic ulasmiyor.
+ *
+ * Cikarilanlar ayrica raporlanir — sessizce elenmis olmasinlar.
+ */
+const kapiyaUlasmayan = outOfScope.filter((q) => checkOutOfScope(q));
+const outOfScopeGate = outOfScope.filter((q) => !checkOutOfScope(q));
+
 if (countChunks() === 0) {
   console.error('\n  Indeks bos. Once `npm run ingest` calistirin.\n');
   process.exit(1);
@@ -105,12 +120,17 @@ const fuse = (c: Components, w: number) => {
 };
 
 console.log(`\n  Hibrit kalibrasyon — ${countChunks()} parca`);
-console.log(`  ${inScope.length} kapsam-ici / ${outOfScope.length} kapsam-disi sorgu\n`);
+console.log(`  ${inScope.length} kapsam-ici / ${outOfScopeGate.length} kapsam-disi sorgu (kapiya ULASAN)`);
+if (kapiyaUlasmayan.length) {
+  console.log(`  ${kapiyaUlasmayan.length} sorgu scope.service tarafindan zaten reddediliyor, olcum disi:`);
+  for (const q of kapiyaUlasmayan) console.log(`    - ${q}`);
+}
+console.log('');
 
 const icComp: Components[] = [];
 const disComp: Components[] = [];
 for (const q of inScope) icComp.push(await components(q));
-for (const q of outOfScope) disComp.push(await components(q));
+for (const q of outOfScopeGate) disComp.push(await components(q));
 
 const fmt = (n: number) => n.toFixed(4).padStart(8);
 
@@ -153,7 +173,7 @@ if (best) {
     .map((q, i) => ({ q, s: fuse(icComp[i], w) }))
     .sort((a, b) => a.s - b.s)
     .slice(0, 3);
-  const disRanked = outOfScope
+  const disRanked = outOfScopeGate
     .map((q, i) => ({ q, s: fuse(disComp[i], w) }))
     .sort((a, b) => b.s - a.s)
     .slice(0, 3);

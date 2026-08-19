@@ -596,6 +596,10 @@ const kapsamDisiSorular = new Set([
   'Hisse senedi opsiyonu alabilir miyim?',
   'Yemekhanede bugün ne var?',
   'Şirketin bu çeyrek cirosu ne oldu?',
+  // Degerlendirme paketinin oos-1 ve multi-5 vakasi. Korpusa evcil hayvan
+  // politikasi eklemek bu iki testi SESSIZCE bozardi — tarama bir eksik
+  // gorunse de burasi bilerek bostur.
+  'Ofise evcil hayvan getirebilir miyim?',
 ]);
 
 const alanlar: { ad: string; sorular: string[] }[] = [

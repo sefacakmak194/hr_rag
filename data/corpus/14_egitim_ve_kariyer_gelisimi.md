@@ -14,3 +14,9 @@ Tüm çalışanların yılda en az 16 saat eğitim tamamlaması beklenir. Bilgi 
 
 ## Madde 5: Yabancı Dil Desteği
 Görevi gereği yabancı dil kullanan çalışanların dil kursu ücretinin %70'i şirket tarafından karşılanır. Destekten yararlanmak için kurs devam oranının %80'in üzerinde olması gerekir.
+
+## Madde 6: Online Kurs ve Konferans Katılımı
+Online eğitim platformu abonelikleri ve tekil online kurs ücretleri yıllık eğitim bütçesinden karşılanır. Yurt içi konferans katılım ücreti ve ulaşım gideri, konferansın görev alanıyla ilgili olması koşuluyla desteklenir. Yurt dışı konferans katılımı direktör onayına tabidir. Konferansa katılan çalışan, dönüşünde ekibine en az 1 saatlik bilgi paylaşımı sunumu yapar.
+
+## Madde 7: İç Eğitmenlik
+Çalışanlar uzmanlık alanlarında iç eğitmen olarak görev alabilir. İç eğitmenlik başvurusu İK Portalı üzerinden yapılır ve eğitmen adayları eğiticinin eğitimi programına alınır. Verilen her eğitim saati için 750 TL iç eğitmenlik ücreti ödenir. İç eğitmenlik, yıllık performans değerlendirmesinde olumlu katkı olarak dikkate alınır.

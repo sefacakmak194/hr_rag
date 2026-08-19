@@ -1,7 +1,7 @@
 # Private Enterprise HR & Policy Local RAG Assistant
 
 Kurumsal İK mevzuatı üzerinde **%100 çevrim dışı (air-gapped)** çalışan, kaynak gösterimli
-yerel RAG asistanı. **20 doküman / 94 bölüm** ile 8 İK alanını kapsar: çalışma düzeni,
+yerel RAG asistanı. **22 doküman / 170 bölüm** ile 10 İK alanını kapsar: çalışma düzeni,
 izinler, ücret ve yan haklar, istihdam süreci, performans, disiplin, İSG ve uyum (KVKK).
 Kapsamın tam dökümü: [data/KAPSAM.md](data/KAPSAM.md).
 
@@ -210,7 +210,7 @@ bir hesap kullanılır (bkz. `scripts/eval-auth.ts`, `scripts/eval-sandbox.ts`).
 | `test:formats` | DOCX okuma, biçim önceliği, taranmış PDF + OCR |
 | `test:audit` | Korpus sağlığı — bozuk korpusta bulmalı, temizde susmalı |
 | `test:rag` | 70 test — 24 niyet, 14 takip sorusu, 32 retrieval |
-| `test:pdf` | 20 doküman — PDF metin çıkarımı sadakati |
+| `test:pdf` | 22 doküman — PDF metin çıkarımı sadakati |
 | `eval` | 48 uçtan uca cevap doğruluğu ölçümü |
 | `compare` | aynı vaka kümesi × birden çok model — doğruluk/gecikme matrisi |
 

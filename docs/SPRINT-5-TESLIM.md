@@ -12,7 +12,7 @@ Son güncelleme: 19.08.2026
 
 Kurumsal İK mevzuatı üzerinde **hiçbir veri makineyi terk etmeden** çalışan,
 kaynak gösterimli, sürüm takipli ve denetlenebilir bir soru-cevap asistanı.
-Microsoft Foundry Local üzerinde, 20 doküman / 94 bölüm.
+Microsoft Foundry Local üzerinde, 22 doküman / 170 bölüm.
 
 Ayırt edici olan şey model değil, **modelin etrafına konan mühendislik**:
 sistem cevabı bilmediğinde bilmediğini söylüyor, bunu ölçüyoruz, ve
@@ -148,7 +148,7 @@ arkasında çalıştırılabilir bir betik var.
 | Ölçüm | Değer | Nasıl tekrarlanır |
 |---|---|---|
 | Uçtan uca değerlendirme | **51/52 (%98.1)** | `npm run eval` |
-| Test doğrulaması | **531 doğrulama / 15 paket** | `npm test` |
+| Test doğrulaması | **560 doğrulama / 16 paket** | `npm test` |
 | CI | Linux'ta yeşil, çevrim dışı | GitHub Actions |
 
 Açık kalan tek vaka **amb-4** (*"Bordro itirazımı kaç gün içinde
@@ -175,7 +175,7 @@ Tam matris: [`data/MODEL-KARSILASTIRMA.md`](../data/MODEL-KARSILASTIRMA.md).
 
 | Sabit | Değer | Ölçüm |
 |---|---|---|
-| `SIMILARITY_THRESHOLD` | 0.832 | `npm run calibrate` |
+| `SIMILARITY_THRESHOLD` | 0.828 | `npm run calibrate` |
 | `LEXICAL_WEIGHT` (hibrit ağırlık) | 0.05 | aynı betik, w süpürmesi |
 | `TOP_K` | 3 | — |
 | `GAP_CLUSTER_THRESHOLD` | 0.86 | `npm run calibrate:gap` |
@@ -274,7 +274,7 @@ yeniden başlatmanız gerekmiyor (port her başlatmada değişir).
 ```bash
 npm run setup      # server + client bağımlılıkları
 npm run ingest     # korpusu indeksle
-npm test           # 531 doğrulama
+npm test           # 560 doğrulama
 npm run eval       # uçtan uca kalite (yalıtılmış kopyada çalışır)
 npm run server     # :5273
 npm run client     # :5173
@@ -305,7 +305,7 @@ Bunları saklamak, projenin kendi ilkesine aykırı olurdu.
 
 ## 6. Teslim kontrol listesi
 
-- [x] Korpus 20 doküman / 94 bölüm, kapsam belgesi yazılı
+- [x] Korpus 22 doküman / 170 bölüm, kapsam belgesi yazılı
 - [x] `npm test` — 531 doğrulama, 15 paket
 - [x] `npm run eval` — 51/52
 - [x] CI yeşil (Linux, çevrim dışı)

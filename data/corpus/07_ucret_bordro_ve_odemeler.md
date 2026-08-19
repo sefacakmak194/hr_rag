@@ -14,3 +14,15 @@ Yıllık performans primi, performans değerlendirme sonucuna bağlı olarak Mar
 
 ## Madde 5: Bordro İtirazları
 Bordrosunda hata olduğunu düşünen çalışan, bordronun erişime açılmasından itibaren 15 gün içinde İK departmanına yazılı başvuruda bulunur. İtirazlar en geç 10 iş günü içinde sonuçlandırılır ve tespit edilen fark takip eden bordroya yansıtılır.
+
+## Madde 6: Performansın Zamma Etkisi
+Yıllık zam oranı, enflasyon ve piyasa verilerinin yanı sıra çalışanın performans değerlendirme sonucuna göre belirlenir. Performansı beklentinin üzerinde değerlendirilen çalışan, şirket ortalamasının üzerinde zam alır. Performans notu zam oranını etkiler ancak tek başına belirlemez.
+
+## Madde 7: Yasal Kesintiler ve Vergi Dilimi
+Brüt ücretten gelir vergisi, damga vergisi ve SGK işçi payı kesintileri yapılır. Yıl içinde kümülatif gelir arttıkça gelir vergisi dilimi yükselir ve net ücret yılın son aylarında düşebilir; bu bir kesinti hatası değil, artan oranlı vergi tarifesinin sonucudur. Asgari geçim indirimi uygulaması yürürlükten kalkmış olup yerine asgari ücret tutarına kadar olan kısım gelir vergisi ve damga vergisinden istisna tutulmaktadır. Bordroya ilişkin sorular ik@sirket.local adresine iletilir.
+
+## Madde 8: Maaş Haczi ve İcra Kesintisi
+İcra dairesinden gelen haciz müzekkeresi üzerine, çalışanın net ücretinin en fazla dörtte biri kesilerek ilgili dosyaya aktarılır. Haciz kesintisi başlamadan önce çalışana yazılı bilgilendirme yapılır. Nafaka alacakları bu sınırlamaya tabi değildir ve öncelikli olarak karşılanır. Haciz durumu çalışanın performans değerlendirmesinde ve terfi sürecinde dikkate alınmaz.
+
+## Madde 9: Bireysel Emeklilik ve Otomatik Katılım
+Çalışanlar otomatik katılım kapsamında bireysel emeklilik sistemine dâhil edilir. İşveren, çalışanın bireysel emeklilik katkı payına ek olarak brüt ücretin %3'ü oranında katkı yapar. Çalışan, sisteme dâhil edildiği tarihten itibaren 2 ay içinde cayma hakkını kullanarak sistemden çıkabilir. Cayma süresi geçtikten sonra da çalışan istediği zaman sistemden ayrılabilir; bu durumda işveren katkısı hak ediş süresine göre ödenir.

@@ -20,3 +20,9 @@ Etik Kurul, bildirimi takip eden 20 iş günü içinde soruşturmayı tamamlar. 
 
 ## Madde 7: Engelli Çalışan Hakları
 Engelli çalışanlar için iş yerinde erişilebilirlik düzenlemeleri yapılır ve çalışma koşullarında makul uyarlamalar sağlanır. Engellilik durumu, performans değerlendirmesinde aleyhe kriter olarak kullanılamaz.
+
+## Madde 8: Anonim Bildirim ve İhbarcının Korunması
+Çalışanlar şikâyet ve ihbarlarını isimlerini vermeden, anonim olarak iletebilir; bunun için İK Portalı'ndaki Etik Bildirim Hattı kullanılır. Anonim bildirimler de kayda alınır ve aynı süreçle değerlendirilir. İyi niyetle bildirimde bulunan çalışanın kimliği, soruşturmayı yürüten Etik Kurul dışında hiç kimseyle paylaşılmaz. Şirketimizde ihbarcı koruması uygulanır: ihbarda bulunduğu için çalışana yönelik olumsuz muamele, görev değişikliği veya sözleşme feshi uygulanamaz; aksi davranış başlı başına disiplin suçudur. Bildirimi asılsız ve kötü niyetli olarak yapan çalışan hakkında ise disiplin süreci işletilir.
+
+## Madde 9: İnsan Kaynaklarına Erişim
+Çalışanlar İnsan Kaynakları departmanına ik@sirket.local adresinden ulaşabilir. İK Portalı üzerinden randevu alınarak birebir görüşme talep edilebilir; görüşme talepleri en geç 3 iş günü içinde karşılanır. Görüşmenin gizli yürütülmesi talep edilebilir ve bu talep kayda geçirilir.

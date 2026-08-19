@@ -17,3 +17,9 @@ Deneme süresini tamamlayan tüm çalışanlar tamamlayıcı özel sağlık sigo
 
 ## Madde 6: Bayram İkramiyesi
 Ramazan ve Kurban Bayramı öncesinde tüm çalışanlara brüt asgari ücret tutarında bayram ikramiyesi ödenir. İkramiye, bayram tatilinin başlamasından en az 3 iş günü önce hesaplara yatırılır.
+
+## Madde 7: Spor ve Sağlıklı Yaşam Desteği
+Çalışanlara spor salonu üyeliği desteği olarak aylık 1.000 TL karşılanır. Destekten yararlanmak için üyelik faturasının çalışan adına düzenlenmiş olması ve İK Portalı'na yüklenmesi gerekir. Destek, kullanılmayan aylarda birikmez ve devretmez.
+
+## Madde 8: Gözlük ve Optik Desteği
+Özel sağlık sigortası kapsamı dışında kalan numaralı gözlük ve lens giderleri için çalışan başına 2 yılda 1 kez ve en fazla 4.000 TL destek sağlanır. Destek için göz doktoru raporu ve fatura ibraz edilir. Ekranlı araçlarla çalışanların ekran gözlüğü ihtiyacı ayrıca İSG yönetmeliği kapsamında karşılanır.

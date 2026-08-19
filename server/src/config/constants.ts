@@ -187,15 +187,31 @@ export const TOP_K = Number(process.env.TOP_K ?? 3);
  * E5 ailesi icin gecersizdir: E5 kosinus skorlarini dar bir banda sikistirdigindan
  * 0.65 her sorguyu gecirir ve halusinasyon engellemesi cokerdi.
  *
- * scripts/calibrate.ts, 94 parcalik korpusta 34 kapsam-ici / 10 kapsam-disi sorgu ile
- * hibrit skor uzerinden secildi:
- *   w=0.00 (salt vektor) : ici-min 0.8499  dis-maks 0.8404  bosluk 0.0096
- *   w=0.05 (SECILEN)     : ici-min 0.8408  dis-maks 0.8230  bosluk 0.0179  <- 1.9x
- *   w>=0.15              : ORTUSUYOR (bosluk negatif)
+ * scripts/calibrate.ts ile hibrit skor uzerinden secildi.
  *
- * DIKKAT — bosluk hala dar (0.0179). Korpus her degistiginde yeniden kalibre edin.
+ * 170 parcalik korpus, 38 kapsam-ici / 10 kapsam-disi sorgu (19.08.2026):
+ *   w=0.00 (salt vektor) : bosluk 0.0235
+ *   w=0.05 (SECILEN)     : ici-min 0.8412  dis-maks 0.8142  bosluk 0.0270  <- 1.1x
+ *   w>=0.20              : ORTUSUYOR (bosluk negatif)
+ *
+ * ONCEKI DURUM VE NEDEN DEGISTI. 94 parcalik korpusta bosluk 0.0179 idi ve
+ * esik 0.832 secilmisti. Iki sey degisti:
+ *
+ *   1. `scope.service` eklendi. Kasitli kapsam disi konular (sirket araci,
+ *      hisse opsiyonu) vektor aramasina HIC girmiyor; kapinin cozmesi gereken
+ *      sorun kuculdu. Kalibrasyon betigi artik bu sorgulari olcum disi tutuyor
+ *      — aksi halde kapiya hic ulasmayan bir sorgu, kapiyi basarisiz
+ *      gosteriyordu ("Sirket araci tahsis ediliyor mu?" 0.8423).
+ *   2. Korpus 94 -> 170 parcaya cikti; kapsam-ici sorgular daha iyi karsilik
+ *      buluyor.
+ *
+ * Sonuc: bosluk 0.0179 -> 0.0270 ve esik 0.832 -> 0.828. Esigin DUSMESI
+ * beklenenin tersi gorunebilir; sebebi kapsam-disi maksimumun 0.8230'dan
+ * 0.8142'ye inmesi, yani asagi taraftaki baskinin azalmasi.
+ *
+ * DIKKAT — bosluk hala dar. Korpus her degistiginde yeniden kalibre edin.
  */
-export const SIMILARITY_THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD ?? 0.832);
+export const SIMILARITY_THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD ?? 0.828);
 
 /**
  * Goreli marj kapisi — VARSAYILAN OLARAK KAPALI (0).

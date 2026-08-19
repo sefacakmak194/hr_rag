@@ -116,6 +116,38 @@ export const cases: EvalCase[] = [
   { id: 'oos-2', group: 'Kapsam dışı', question: 'Hisse senedi opsiyonu alabilir miyim?', must: ['bilgi bulunmamaktadır'], expectDoc: null },
   { id: 'oos-3', group: 'Kapsam dışı', question: 'İstanbul hava durumu nasıl?', must: ['bilgi bulunmamaktadır'], expectDoc: null },
 
+  // --- ifade degisimine dayaniklilik ---
+  //
+  // Ikisi de MEVCUT vakalarin yeniden ifade edilmis hali ve ikisi de gecmiyor.
+  // Paketlenmis .exe duman testinde bulundu; gelistirme sunucusunda birebir
+  // ayni sonucu verdiler, yani paketleme sorunu DEGIL.
+  {
+    id: 'rob-1',
+    group: 'Dayanıklılık',
+    question: 'Yıllık izin kaç gün?',
+    must: ['14 iş günü'],
+    mustNot: ['10 gün öncesinden'],
+    expectDoc: '01_calisma_saatleri_ve_izinler.md',
+    known:
+      'Dogru BOLUMU buluyor (Madde 2, skor 0.8839) ama cumle duzeyinde kanit secimi ' +
+      'hak tablosu yerine TALEP SURESI cumlesini seciyor; yanit "en az 10 gun oncesinden ' +
+      'IK Portali..." oluyor. Kidem tablosu madde isaretli satirlarda; talep cumlesi ise ' +
+      'duz cumle ve hem "yillik izin" hem "gun" iceriyor. spec-1 ayni konuyu kidem ' +
+      'belirterek soruyor ve deterministik hesaplayiciya gittigi icin geciyor.',
+  },
+  {
+    id: 'rob-2',
+    group: 'Dayanıklılık',
+    question: 'Şirket aracı tahsis ediliyor mu?',
+    must: ['bilgi bulunmamaktadır'],
+    expectDoc: null,
+    known:
+      'spec-3 ("Sirket bana ozel arac tahsisi yapiyor mu?") geciyor ama bu yeniden ' +
+      'ifade alaka kapisini asiyor: "arac" kelimesi "lisanssiz ARAC kullanimi" (gerec ' +
+      'anlaminda) ile eslesiyor, skor 0.8409 > 0.832. Model "No" diyor — ustelik ' +
+      'Ingilizce. Sartnamenin halusinasyon testi bu haliyle DUSUYOR.',
+  },
+
   // --- sohbet ---
   { id: 'chat-1', group: 'Sohbet', question: 'selam', must: ['Merhaba'], expectDoc: null },
   { id: 'chat-2', group: 'Sohbet', question: 'ne iş yaparsın', must: ['İK'], expectDoc: null },

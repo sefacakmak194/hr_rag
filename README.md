@@ -118,13 +118,44 @@ dist-app/
 diskten okur; Node SEA blob'una gömülemezler. Bu yüzden exe'nin yanında `runtime/`
 klasörü bulunur — kullanıcı yine tek bir şey çalıştırır.
 
-**Boyut (~623 MB) neden bu kadar?** `runtime/` içinde embedding modeli (448 MB, fp32)
-gömülü gelir. Bu bilinçli: paket **hiç internet olmadan** çalışır, ilk açılışta model
-indirmez. Eşikler bu fp32 model üzerinde kalibre edildiği için kuantize sürüme geçmek
-yeniden kalibrasyon gerektirir.
+**Boyut neden bu kadar?** Ölçüldü — toplam **918 MB**:
+
+| Bileşen | Boyut |
+|---|---|
+| `runtime/node_modules/@huggingface` (embedding modeli, fp32) | 478 MB |
+| `runtime/node_modules/onnxruntime-web` | 130 MB |
+| `PrivateHrRag.exe` (node.exe + SEA blob) | 89 MB |
+| `onnxruntime-node` (native DLL'ler) | 60 MB |
+| `tesseract.js-core` + `@napi-rs` + `pdfjs-dist` (OCR/PDF) | 116 MB |
+| `vendor/tessdata` (Türkçe OCR dil verisi) | 4.4 MB |
+| `data/` (korpus + hazır vektör indeksi) | 400 KB |
+
+Embedding modelinin gömülü gelmesi bilinçli: paket **hiç internet olmadan** çalışır,
+ilk açılışta model indirmez. Eşikler bu fp32 model üzerinde kalibre edildiği için
+kuantize sürüme geçmek yeniden kalibrasyon gerektirir.
+
+`onnxruntime-web` (130 MB) Node paketinde kullanılmıyor — `@huggingface/transformers`
+üzerinden geçişli olarak geliyor. Ayıklanabilir; henüz denenmedi.
 
 Klasörü olduğu gibi kopyalayın; Node.js kurulu olmayan makinede de çalışır
 (Foundry Local yine gerekir).
+
+### Pakete giden veritabanı temizlenir
+
+`data/vectors.db` yalnızca vektör indeksi değil: Sprint 1'den beri kullanıcı
+hesaplarını (parola özetleriyle), denetim kaydını ve Sprint 4'ten beri yanıtsız soru
+metinlerini de taşıyor. Düz kopyalama, paketi alan **herkese** bu makinede kimin ne
+sorduğunu ve yönetici hesabının parola özetini verirdi.
+
+Paketleyici bu yüzden `VACUUM INTO` ile tutarlı bir kopya alıp temizliyor:
+
+- **silinir:** `users`, `sessions`, `audit_log`, `unanswered_questions`
+- **kalır:** `chunks` (hazır indeks), `documents` (erişim etiketleri),
+  `document_versions` — `created_by` alanı `kurulum` ile değiştirilerek
+
+Paketi alan kişi **kendi kurulumunu** yapar: uygulama hiç kullanıcı yoksa ilk kurulum
+ekranını gösterir. Temizlik doğrulanmadan paket yazılmaz; doğrulama başarısızsa derleme
+hata ile durur.
 
 ## Doğrulama
 

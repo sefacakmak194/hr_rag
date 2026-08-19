@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { DatabaseSync } from 'node:sqlite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -185,11 +186,101 @@ if (fs.existsSync(napi)) {
   }
 }
 
+/**
+ * Pakete giden veritabanini HAZIRLA — canli dosyayi oldugu gibi kopyalama.
+ *
+ * NEDEN: `data/vectors.db` yalnizca vektor indeksi degil; Sprint 1'den beri
+ * kullanici hesaplarini (parola ozetleriyle), denetim kaydini ve Sprint 4'ten
+ * beri yanitsiz soru metinlerini de tasiyor. Duz kopyalama, paketi alan HERKESE
+ * bu makinede kimin hangi soruyu sordugunu ve yonetici hesabinin parola ozetini
+ * verir. Olculdu: canli veritabaninda 1 hesap (e-posta adresi kullanici adi),
+ * 100 denetim satiri, 4 bosluk kaydi.
+ *
+ * Paketi alan kisi KENDI kurulumunu yapar: uygulama hic kullanici yoksa ilk
+ * kurulum ekranini gosterir (bkz. auth.route.ts). Yani hesaplarin gitmesi
+ * gereksiz oldugu kadar zararli.
+ *
+ * NE KALIR: `chunks` (hazir vektor indeksi — paketin internet olmadan calismasi
+ * buna bagli), `documents` (erisim etiketleri) ve `document_versions`. Surumler
+ * kaliyor ki yanit altindaki "... tarihli surume dayanmaktadir" bildirimi ilk
+ * calistirmada calissin; ama `created_by` alanindaki kullanici adi 'kurulum'
+ * ile degistiriliyor.
+ *
+ * NASIL: once `VACUUM INTO` ile tutarli bir kopya alinir (dosya baska bir surec
+ * tarafindan aciksa bile guvenli), sonra kopya temizlenir. Denetim kaydinin
+ * silinme tetikleyicisi kopyada dusurulur — bu bir TUREV artefakt, kaydin
+ * kendisi degil. Tetikleyiciler `CREATE TRIGGER IF NOT EXISTS` oldugu icin
+ * uygulama ilk aciliste hepsini yeniden kurar.
+ */
+const paketVeritabani = (src, dest) => {
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.rmSync(dest, { force: true });
+
+  const kaynak = new DatabaseSync(src, { readOnly: true });
+  kaynak.exec(`VACUUM INTO '${dest.replace(/'/g, "''")}'`);
+  kaynak.close();
+
+  // Yabanci anahtar zorlamasi KAPALI: node:sqlite bunu varsayilan olarak acar ve
+  // `audit_log.user_id -> users.id` yuzunden hesaplari silmeye izin vermez. Burada
+  // butun tablolar birlikte bosaltiliyor, sira onemli degil.
+  const kopya = new DatabaseSync(dest, { enableForeignKeyConstraints: false });
+  for (const t of ['audit_no_delete', 'audit_no_update', 'versions_no_delete', 'versions_immutable']) {
+    kopya.exec(`DROP TRIGGER IF EXISTS ${t}`);
+  }
+
+  const sayac = {};
+  for (const tablo of ['users', 'sessions', 'audit_log', 'unanswered_questions']) {
+    // Tablo yoksa sayim asamasinda hata verir ve o tabloyu atlariz. DELETE ise
+    // AYRI dene/yakala icinde degil: gercek bir silme hatasi yutulmamali, cunku
+    // yutulursa temizlenmemis veritabani paketlenmis olur.
+    let n;
+    try {
+      n = kopya.prepare(`SELECT COUNT(*) n FROM ${tablo}`).get().n;
+    } catch {
+      continue; // tablo henuz olusmamis
+    }
+    sayac[tablo] = n;
+    kopya.exec(`DELETE FROM ${tablo}`);
+  }
+  try {
+    kopya.exec(`UPDATE document_versions SET created_by = 'kurulum'`);
+  } catch {
+    /* surum tablosu yoksa yapacak bir sey yok */
+  }
+  kopya.exec('VACUUM');
+
+  const kalan = (t) => {
+    try {
+      return kopya.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
+    } catch {
+      return 0;
+    }
+  };
+  const parca = kalan('chunks');
+  const surum = kalan('document_versions');
+
+  // Temizlik dogrulanmadan paket yazilmis olmasin.
+  for (const tablo of ['users', 'audit_log', 'unanswered_questions']) {
+    if (kalan(tablo) !== 0) {
+      kopya.close();
+      throw new Error(`Paket veritabani temizlenemedi: ${tablo} hala dolu.`);
+    }
+  }
+  kopya.close();
+
+  const temizlenen = Object.entries(sayac)
+    .filter(([, n]) => n > 0)
+    .map(([t, n]) => `${t}:${n}`)
+    .join(' ');
+  log(`     Veritabani hazirlandi — parca:${parca} surum:${surum}` +
+      (temizlenen ? ` | temizlenen ${temizlenen}` : ' | temizlenecek kayit yoktu'));
+};
+
 // Arayuz + veri
 copyDir(path.join(ROOT, 'client', 'dist'), path.join(OUT, 'public'));
 copyDir(path.join(ROOT, 'data', 'corpus'), path.join(OUT, 'data', 'corpus'));
 if (fs.existsSync(path.join(ROOT, 'data', 'vectors.db'))) {
-  fs.copyFileSync(path.join(ROOT, 'data', 'vectors.db'), path.join(OUT, 'data', 'vectors.db'));
+  paketVeritabani(path.join(ROOT, 'data', 'vectors.db'), path.join(OUT, 'data', 'vectors.db'));
 }
 if (fs.existsSync(path.join(ROOT, '.env.local'))) {
   fs.copyFileSync(path.join(ROOT, '.env.local'), path.join(OUT, '.env.local'));

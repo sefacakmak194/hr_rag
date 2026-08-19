@@ -15,6 +15,7 @@
     "pdf": "npm run pdf --prefix server",
     "test": "npm test --prefix server",
     "eval": "npm run eval --prefix server",
-    "compare": "npm run compare --prefix server"
+    "compare": "npm run compare --prefix server",
+    "verify-archive": "npm run verify-archive --prefix server --"
   }
 }

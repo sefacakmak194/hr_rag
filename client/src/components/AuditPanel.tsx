@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import IntegrityPanel from './IntegrityPanel';
 import type { AuditResponse, AuditRow, SessionUser } from '../types';
 
 /**
@@ -89,6 +90,9 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
           {data?.scope === 'tumu' ? 'tüm kullanıcılar' : 'yalnızca kendi kayıtlarınız'}
         </span>
       </div>
+
+      {/* Butunluk paneli yalnizca yoneticide; sunucu da 403 ile zorluyor. */}
+      {user.role === 'yonetici' && <IntegrityPanel />}
 
       {data && (
         <div className="audit-summary">

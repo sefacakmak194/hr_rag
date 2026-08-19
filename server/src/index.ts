@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import chatRoute from './routes/chat.route.js';
 import documentsRoute from './routes/documents.route.js';
 import versionsRoute from './routes/versions.route.js';
+import integrityRoute from './routes/integrity.route.js';
 import authRoute from './routes/auth.route.js';
 import { promoteDueVersions } from './services/corpusSync.service.js';
 import { attachPrincipal } from './middleware/session.js';
@@ -75,6 +76,7 @@ app.use('/api', authRoute);
 app.use('/api', chatRoute);
 app.use('/api', documentsRoute);
 app.use('/api', versionsRoute);
+app.use('/api', integrityRoute);
 
 // Paketlenmis modda arayuz de bu sunucudan servis edilir (ayri Vite gerekmez).
 if (HAS_STATIC_UI) {

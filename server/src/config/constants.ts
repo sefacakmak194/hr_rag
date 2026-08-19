@@ -79,6 +79,27 @@ export const DB_PATH = process.env.DB_PATH
   : path.join(REPO_ROOT, 'data', 'vectors.db');
 
 /**
+ * Denetim imzalama anahtarlari ve arsiv dizini (Sprint 3a).
+ *
+ * OZEL ANAHTAR VARSAYILAN OLARAK VERI DIZININDE durur — yani veritabaniyla ayni
+ * yerde. Bu, kurcalamaya karsi tam koruma DEGILDIR: dosyaya erisebilen ikisine
+ * de erisir. `AUDIT_KEY_PATH` ile anahtar baska bir yere (ornegin cikarilabilir
+ * bir surucuye) alinabilir; asil savunma ise arsivin makineden DISARI
+ * cikarilmasidir. Ayrinti: services/integrity.service.ts dosya basi.
+ */
+export const AUDIT_KEY_PATH = process.env.AUDIT_KEY_PATH
+  ? path.resolve(process.env.AUDIT_KEY_PATH)
+  : path.join(REPO_ROOT, 'data', 'audit-signing.key');
+
+export const AUDIT_PUBLIC_KEY_PATH = process.env.AUDIT_PUBLIC_KEY_PATH
+  ? path.resolve(process.env.AUDIT_PUBLIC_KEY_PATH)
+  : path.join(REPO_ROOT, 'data', 'audit-public.pem');
+
+export const ARCHIVE_DIR = process.env.ARCHIVE_DIR
+  ? path.resolve(process.env.ARCHIVE_DIR)
+  : path.join(REPO_ROOT, 'data', 'arsiv');
+
+/**
  * Calisma aninda modul yukleyen tek nokta.
  *
  * DIKKAT — paketlenmis (SEA) modda `createRequire(__filename)` EXE'nin kendisini

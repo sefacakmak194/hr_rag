@@ -144,7 +144,8 @@ geçici bir hesap açıp iş bitince siler (bkz. `scripts/eval-auth.ts`).
 | `test:identity` | 38 test — parola, oturum, roller, denetim değiştirilemezliği |
 | `test:access` | 41 test — erişim filtresi servis katmanında (arama, dayanak, BM25) |
 | `test:versions` | 61 test — sürüm açılma kuralı, yürürlük tarihi, arşiv, fark hesabı |
-| `test:endpoints` | 32 test — **HTTP ucu** düzeyinde erişim kontrolü (gerçek Express) |
+| `test:endpoints` | 46 test — **HTTP ucu** düzeyinde erişim kontrolü (gerçek Express) |
+| `test:integrity` | 48 test — hash zinciri, imzalı arşiv, kurcalama tespiti |
 | `test:evidence` | 18 test — cümle/yan cümle bölme, canlı korpus üzerinde kanıt seçimi |
 | `test:documents` | 21 test — dosya adı doğrulaması (dizin geçişi, uzantı kaçışı) |
 | `test:formats` | DOCX okuma, biçim önceliği, taranmış PDF + OCR |
@@ -768,6 +769,67 @@ Ayrıntılı gerekçeler: [`docs/SPRINT-2-TASARIM.md`](docs/SPRINT-2-TASARIM.md)
 
 ---
 
+## Denetim bütünlüğü
+
+Denetim kaydını SQLite tetikleyicileri koruyor, ama bu **uygulama içinden** gelen
+yolları kapatır. `data/vectors.db` dosyasına doğrudan erişebilen biri —
+`sqlite3` komut satırıyla — tetikleyiciyi düşürüp satır silebilir.
+
+### Dürüst sınır
+
+Tek bir air-gapped makinede kurcalamayı **imkânsız** kılamazsınız; dosyaya
+erişimi olan, sonunda özel anahtara da erişir. Yapılabilecek olan şu:
+
+1. Kurcalamayı **tespit edilebilir** kılmak → hash zinciri
+2. Tespit kanıtını **taşınabilir** kılmak → imzalı arşiv
+
+**Asıl savunma, arşivin makineden dışarı çıkarılmış olmasıdır.** Dışarı çıkmış
+bir arşiv geriye dönük değiştirilemez.
+
+### Hash zinciri
+
+Her denetim satırı bir öncekinin özetini taşır:
+
+```
+row_hash = sha256(prev_hash ‖ satırın alanları)
+```
+
+Aradan satır silmek ya da bir satırı değiştirmek zinciri o noktadan itibaren
+kırar. Ölçüldü: yalnızca `duration_ms` alanını oynatmak bile yakalanıyor.
+
+**Zincirin göremediği tek durum:** son satırların silinmesi — ileriye işaret
+eden bir şey yok. Bunun cevabı arşivdir: arşiv, o an zincirin başını ve son
+satır numarasını kaydeder; veritabanı arşivin gerisine düşmüşse kurcalama ortaya
+çıkar. Son arşivden *sonra* yazılmış satırların silinmesi hâlâ tespit edilemez;
+çözümü sık arşivlemektir. Bu sınır gizlenmiyor çünkü gizlenmesi yanlış güvence
+üretir.
+
+### Bağımsız doğrulama
+
+Kurcalanmış bir sunucunun kendi arşivini "geçerli" demesi hiçbir şey kanıtlamaz.
+Doğrulama başka bir makinede yapılır:
+
+```bash
+npm run verify-archive -- <arşiv.json> <açık-anahtar.pem>
+```
+
+Bu betik veritabanına dokunmaz, sunucuya bağlanmaz, yalnızca `node:crypto`
+kullanır — arşiv ve açık anahtar herhangi bir Node kurulumuna kopyalanıp
+doğrulanabilir. Geçerli arşivde çıkış kodu 0, kurcalanmışta 1.
+
+Açık anahtar **bağımsız edinilmelidir**: arşive gömülü anahtarla doğrulama,
+dosyanın kendi içinde tutarlı olduğunu gösterir ama kimin imzaladığını
+kanıtlamaz. Betik anahtar verilmediğinde bunu açıkça söyler.
+
+### Zincir öncesi satırlar
+
+Zincir eklenmeden önce yazılmış satırların özeti **geriye dönük
+hesaplanmadı** ve panelde "zincir öncesi" olarak gösterilir. Zaten değiştirilmiş
+olabilecek veri üzerinden hash üretmek, doğrulanmamış şeye "doğrulandı" demek
+olurdu.
+
+---
+
 ## Model karşılaştırması
 
 `npm run compare`, **aynı** değerlendirme vakalarını birden çok Foundry Local modeliyle
@@ -898,14 +960,15 @@ private-hr-rag/
 │   │   │   ├── versioning.service.ts    # politika sürümleri + arşiv
 │   │   │   ├── corpusSync.service.ts    # indeks kilidi + yürürlüğe alma
 │   │   │   ├── diff.service.ts          # satır düzeyinde sürüm farkı
+│   │   │   ├── integrity.service.ts     # hash zinciri + imzalı arşiv
 │   │   │   └── foundryClient.service.ts # SSE + sağlık kontrolü
-│   │   ├── routes/{chat,documents,versions,auth}.route.ts
+│   │   ├── routes/{chat,documents,versions,integrity,auth}.route.ts
 │   │   └── index.ts
 │   └── package.json
 ├── client/
 │   ├── src/
 │   │   ├── components/{ChatWindow,CitationBadge,StatusIndicator,DocumentManager}.tsx
-│   │   ├── components/{AuthGate,AuditPanel,VersionHistory,DetailsBlock}.tsx
+│   │   ├── components/{AuthGate,AuditPanel,VersionHistory,IntegrityPanel,DetailsBlock}.tsx
 │   │   ├── App.tsx · main.tsx · styles.css · types.ts
 │   └── vite.config.ts
 ├── scripts/
@@ -917,6 +980,7 @@ private-hr-rag/
 │   ├── eval-auth.ts                # değerlendirme paketleri için oturum
 │   ├── test-rag.ts · test-policy.ts · test-evidence.ts · test-pdf.ts
 │   ├── test-identity.ts · test-access.ts · test-versions.ts · test-endpoints.ts
+│   ├── test-integrity.ts · verify-archive.ts   # bağımsız arşiv doğrulayıcı
 │   ├── md-to-pdf.mjs · build-exe.mjs
 └── README.md
 ```
@@ -943,6 +1007,10 @@ private-hr-rag/
 | `/api/documents/:name/pending` | DELETE | Planlanmış sürümden vazgeç |
 | `/api/auth/status` · `/auth/login` · `/auth/logout` · `/auth/setup` · `/auth/users` | — | Kimlik katmanı (Sprint 1) |
 | `/api/audit` | GET | Denetim kaydı (yönetici tümü, diğerleri kendi satırları) |
+| `/api/audit/integrity` | GET | Hash zinciri durumu (yalnızca yönetici) |
+| `/api/audit/archive` | POST | İmzalı arşiv üret (yalnızca yönetici) |
+| `/api/audit/archives` | GET | Arşiv listesi (yalnızca yönetici) |
+| `/api/audit/archives/:dosya` | GET | Bir arşivi yerinde doğrula (yalnızca yönetici) |
 
 Erişimi olmayan bir dokümana yapılan istek **404** alır, 403 değil: dokümanın
 var olduğu bilgisi bile sızmamalı.

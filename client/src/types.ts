@@ -194,3 +194,39 @@ export interface AuditResponse {
   scope: 'tumu' | 'kendi';
   rows: AuditRow[];
 }
+
+/** Denetim kaydinin hash zinciri durumu (Sprint 3a). */
+export interface IntegrityReport {
+  ok: boolean;
+  /** Zincire dahil satir sayisi. */
+  chained: number;
+  /** Zincir eklenmeden once yazilmis, dogrulanamayan satir sayisi. */
+  preChain: number;
+  chainHead: string;
+  lastRowId: number | null;
+  brokenAt?: number;
+  reason?: string;
+  sonArsiv: { dosya: string; sonSatir: number } | null;
+  acikAnahtarParmakIzi: string;
+  arsivDizini: string;
+}
+
+export interface ArchiveItem {
+  dosya: string;
+  bayt: number;
+  olusturuldu: string;
+  satirSayisi: number;
+}
+
+export interface ArchiveVerification {
+  dosya: string;
+  ok: boolean;
+  imzaGecerli: boolean;
+  zincirGecerli: boolean;
+  satirSayisi: number;
+  surumSayisi: number;
+  olusturuldu: string;
+  parmakIzi: string;
+  anahtarEslesti?: boolean;
+  sorunlar: string[];
+}

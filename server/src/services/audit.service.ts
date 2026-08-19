@@ -16,6 +16,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { getDb } from './vectorStore.service.js';
+import { chainHead, rowFingerprint } from './integrity.service.js';
 import type { AccessLabel, Principal } from './identity.service.js';
 
 export interface AuditCitation {
@@ -89,20 +90,42 @@ export function recordAudit(entry: AuditEntry): void {
     const db = getDb();
     const restricted = touchedRestricted(db, entry.citations);
 
+    const row = {
+      id: 0, // zincir ozetine girmez (bkz. integrity.service, rowFingerprint)
+      at: new Date().toISOString(),
+      userId: entry.principal.userId,
+      username: entry.principal.username,
+      role: entry.principal.role as string,
+      question: restricted ? entry.question : null,
+      resolvedQuery: restricted ? (entry.resolvedQuery ?? null) : null,
+      citations: JSON.stringify(entry.citations),
+      answered: entry.answered ? 1 : 0,
+      durationMs: Math.round(entry.durationMs),
+    };
+
+    // HASH ZINCIRI (Sprint 3a): satir bir oncekinin ozetini tasir. Aradan satir
+    // silmek ya da bir satiri degistirmek zinciri kirar ve tespit edilebilir
+    // olur — tetikleyiciler yalnizca UYGULAMA icinden gelen yollari kapatiyordu.
+    const prevHash = chainHead(db);
+    const rowHash = rowFingerprint(prevHash, row);
+
     db.prepare(
       `INSERT INTO audit_log
-         (at, user_id, username, role, question, resolved_query, citations, answered, duration_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (at, user_id, username, role, question, resolved_query, citations, answered,
+          duration_ms, prev_hash, row_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
-      new Date().toISOString(),
-      entry.principal.userId,
-      entry.principal.username,
-      entry.principal.role,
-      restricted ? entry.question : null,
-      restricted ? (entry.resolvedQuery ?? null) : null,
-      JSON.stringify(entry.citations),
-      entry.answered ? 1 : 0,
-      Math.round(entry.durationMs),
+      row.at,
+      row.userId,
+      row.username,
+      row.role,
+      row.question,
+      row.resolvedQuery,
+      row.citations,
+      row.answered,
+      row.durationMs,
+      prevHash,
+      rowHash,
     );
   } catch (error) {
     console.error('[denetim] kayit yazilamadi:', (error as Error).message);

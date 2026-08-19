@@ -31,6 +31,11 @@ fs.mkdirSync(corpus, { recursive: true });
 process.env.DB_PATH = path.join(dir, 'endpoints-test.db');
 process.env.CORPUS_DIR = corpus;
 process.env.PENDING_DIR = path.join(dir, 'pending');
+// Butunluk uclari anahtar uretir ve arsiv yazar; YALITILMALI. Aksi halde test
+// gercek `data/` dizinine imza anahtari ve arsiv birakir (bir kez oldu).
+process.env.ARCHIVE_DIR = path.join(dir, 'arsiv');
+process.env.AUDIT_KEY_PATH = path.join(dir, 'audit-signing.key');
+process.env.AUDIT_PUBLIC_KEY_PATH = path.join(dir, 'audit-public.pem');
 
 // --------------------------------------------------------------- korpus dosyalari
 const GENEL = 'genel_izin.md';
@@ -119,6 +124,7 @@ const { attachPrincipal } = await import('../server/src/middleware/session.js');
 const authRoute = (await import('../server/src/routes/auth.route.js')).default;
 const documentsRoute = (await import('../server/src/routes/documents.route.js')).default;
 const versionsRoute = (await import('../server/src/routes/versions.route.js')).default;
+const integrityRoute = (await import('../server/src/routes/integrity.route.js')).default;
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -126,6 +132,7 @@ app.use(attachPrincipal);
 app.use('/api', authRoute);
 app.use('/api', documentsRoute);
 app.use('/api', versionsRoute);
+app.use('/api', integrityRoute);
 
 const server = app.listen(0);
 await new Promise<void>((r) => server.once('listening', () => r()));
@@ -301,6 +308,43 @@ check(
 );
 const surumSonra = await req('GET', `/api/documents/${GENEL}/versions`, asCalisan);
 check(surumSonra.status === 404, `gecmis surumler de aninda kapaniyor (${surumSonra.status})`);
+
+// ======================================================== 6) butunluk uclari
+console.log('\n  Butunluk uclari (Sprint 3a)\n');
+
+for (const [rol, cookie] of [['calisan', asCalisan], ['ik', asIk]] as const) {
+  const durum = await req('GET', '/api/audit/integrity', cookie);
+  check(durum.status === 403, `${rol} zincir raporunu goremiyor (${durum.status})`);
+
+  const arsivle = await req('POST', '/api/audit/archive', cookie);
+  check(arsivle.status === 403, `${rol} arsiv uretemiyor (${arsivle.status})`);
+
+  const liste = await req('GET', '/api/audit/archives', cookie);
+  check(liste.status === 403, `${rol} arsivleri listeleyemiyor (${liste.status})`);
+}
+
+check((await req('GET', '/api/audit/integrity')).status === 401, 'girissiz istek 401');
+
+const durumYonetici = await req('GET', '/api/audit/integrity', asYonetici);
+check(durumYonetici.status === 200, `yonetici zincir raporunu aliyor (${durumYonetici.status})`);
+check(durumYonetici.body.ok === true, 'temiz veritabaninda zincir butun');
+check(typeof durumYonetici.body.acikAnahtarParmakIzi === 'string', 'acik anahtar parmak izi donuyor');
+
+const uretildi = await req('POST', '/api/audit/archive', asYonetici);
+check(uretildi.status === 200 && uretildi.body.ok === true, `yonetici arsiv uretebiliyor (${uretildi.status})`);
+
+const arsivListesi = await req('GET', '/api/audit/archives', asYonetici);
+check(
+  ((arsivListesi.body.arsivler ?? []) as unknown[]).length === 1,
+  'uretilen arsiv listede',
+);
+
+// Dizin gecisi: arsiv adi dosya sistemine giriyor.
+const gecis = await req('GET', '/api/audit/archives/..%2F..%2Fpackage.json', asYonetici);
+check(gecis.status === 400 || gecis.status === 404, `dizin gecisi reddediliyor (${gecis.status})`);
+
+const yokArsiv = await req('GET', '/api/audit/archives/olmayan.json', asYonetici);
+check(yokArsiv.status === 404, `olmayan arsiv 404 (${yokArsiv.status})`);
 
 // ---------------------------------------------------------------- sonuc
 server.close();

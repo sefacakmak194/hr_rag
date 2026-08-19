@@ -908,3 +908,147 @@ main.with-docs .chat { flex: 1 1 60%; min-width: 0; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px; line-height: 1.55;
 }
+
+/* ---------- Sprint 3a: denetim bütünlüğü ---------- */
+
+.integrity {
+  margin: 10px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.integrity-broken { border-color: rgba(255, 107, 107, 0.5); }
+
+.integrity-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.integrity-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
+.integrity-dot-ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(46, 204, 143, 0.15); }
+.integrity-dot-bad { background: var(--danger); box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.18); }
+.integrity-title { font-weight: 600; flex: none; }
+.integrity-broken .integrity-title { color: var(--danger); }
+.integrity-sub { color: var(--muted); font-size: 11px; }
+.integrity-caret { margin-left: auto; color: var(--muted); font-size: 14px; flex: none; }
+
+.integrity-alarm {
+  margin: 0;
+  padding: 8px 11px;
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--danger);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.integrity-body {
+  padding: 0 11px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.integrity-note,
+.integrity-warn {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.integrity-note { background: rgba(240, 180, 41, 0.08); border-left: 2px solid var(--warn); }
+.integrity-warn { background: rgba(76, 141, 255, 0.07); border-left: 2px solid var(--accent); }
+.integrity-note strong,
+.integrity-warn strong { color: var(--text); }
+.integrity-warn code {
+  display: block;
+  margin-top: 6px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.integrity-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 11.5px;
+}
+.integrity-facts dt { color: var(--muted); }
+.integrity-facts dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.integrity-facts .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.integrity-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.integrity-actions button {
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.integrity-actions button:disabled { opacity: 0.5; cursor: default; }
+.integrity-actions button:not(:disabled):hover { border-color: var(--accent); }
+
+.integrity-archives {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow: auto;
+}
+.integrity-archives li { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.integrity-archives button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.integrity-archives span { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.integrity-verify {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  border: 1px solid var(--line);
+}
+.integrity-verify.ok { border-color: rgba(46, 204, 143, 0.4); background: rgba(46, 204, 143, 0.08); }
+.integrity-verify.bad { border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.1); }
+.integrity-verify span { color: var(--muted); }
+.integrity-issue { line-height: 1.55; }
+
+.integrity-path { margin: 0; font-size: 10.5px; color: var(--muted); overflow-wrap: anywhere; }
+.integrity-path code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.integrity-error { margin: 0; padding: 8px 11px; color: var(--danger); font-size: 11.5px; }

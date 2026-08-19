@@ -14,6 +14,17 @@ data/vectors.db
 # Depoya girerse her klonda "bekleyen surum" gorunur ve indeks yanlis kurulur.
 data/corpus-pending/
 
+# Denetim imzalama OZEL ANAHTARI — asla depoya girmemeli.
+# Acik anahtar (audit-public.pem) paylasilabilir ama makineye ozel uretildigi
+# icin o da izlenmiyor; denetciye elle verilir.
+data/audit-signing.key
+data/audit-public.pem
+
+# Imzali denetim arsivleri — calisma zamani ciktisi.
+# ASIL SAVUNMA bunlarin makineden DISARI cikarilmasidir; depoya konmasi
+# (ozellikle acik olmayan bir depoya) bir yedek stratejisi degildir.
+data/arsiv/
+
 # Embedding modeli onbellegi
 .cache/
 

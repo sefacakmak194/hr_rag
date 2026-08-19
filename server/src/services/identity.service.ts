@@ -141,10 +141,29 @@ export function ensureIdentitySchema(db: DatabaseSync): void {
       resolved_query TEXT,
       citations      TEXT    NOT NULL,
       answered       INTEGER NOT NULL,
-      duration_ms    INTEGER NOT NULL
+      duration_ms    INTEGER NOT NULL,
+      -- Hash zinciri (Sprint 3a): her satir bir oncekinin ozetini tasir.
+      prev_hash      TEXT,
+      row_hash       TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id, at);
   `);
+
+  // Zincir sutunlarini MEVCUT veritabanlarina ekle.
+  //
+  // ALTER TABLE ADD COLUMN satir tetikleyicilerini calistirmaz, dolayisiyla
+  // yukaridaki degistirilemezlik kisitiyla catismaz.
+  //
+  // ESKI SATIRLARIN OZETI GERIYE DONUK HESAPLANMAZ: zaten degistirilmis
+  // olabilecek veri uzerinden hash uretmek, dogrulanmamis seye "dogrulandi"
+  // demek olurdu. Onlar `row_hash IS NULL` ile "zincir oncesi" sayilir.
+  const auditColumns = db.prepare('PRAGMA table_info(audit_log)').all() as unknown as {
+    name: string;
+  }[];
+  if (!auditColumns.some((c) => c.name === 'row_hash')) {
+    db.exec('ALTER TABLE audit_log ADD COLUMN prev_hash TEXT');
+    db.exec('ALTER TABLE audit_log ADD COLUMN row_hash TEXT');
+  }
 
   // Silinemezlik POLITIKA degil KISIT.
   //

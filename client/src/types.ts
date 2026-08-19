@@ -4,6 +4,17 @@ export interface Citation {
   score?: number;
   /** Parca icinde soruyla en ilgili cumle (evidence.service tarafindan secilir). */
   evidence?: string;
+  /** Yanitin dayandigi politika surumu (Sprint 2). */
+  version?: number;
+  versionId?: number;
+  effectiveFrom?: string;
+}
+
+/** "Bu yanit su tarihli surume dayanmaktadir" bilgisi. */
+export interface AnswerBasis {
+  doc: string;
+  version: number;
+  effectiveFrom: string;
 }
 
 export interface AnswerDetails {
@@ -19,6 +30,8 @@ export interface Message {
   content: string;
   citations?: Citation[];
   details?: AnswerDetails;
+  /** Yanitin dayandigi surum; mevzuat degistiginde gecmis yanit yaniltmasin. */
+  basis?: AnswerBasis;
   /** Model bozuk metin uretti; icerik mevzuat alintisiyla degistirildi. */
   replaced?: boolean;
   streaming?: boolean;
@@ -47,14 +60,80 @@ export interface DocumentInfo {
   bytes: number;
   modified: string;
   chunks: number;
+  /** Yururlukteki surum numarasi; surum kaydi yoksa null. */
+  version: number | null;
+  effectiveFrom: string | null;
+  accessLabel: 'genel' | 'ik' | 'yonetici';
+}
+
+/** Yururluk tarihi henuz gelmemis, bekleme dizininde duran surum. */
+export interface PendingVersion {
+  name: string;
+  version: number;
+  effectiveFrom: string;
+  note: string | null;
+  createdBy: string;
+  /** Bekleyen surum artik en yuksek surum degil — elle mudahale gerekiyor. */
+  conflict: boolean;
 }
 
 export interface DocumentsResponse {
   corpusDir: string;
+  pendingDir: string;
   documents: DocumentInfo[];
+  pending: PendingVersion[];
   indexedChunks: number;
   /** Ayni ada sahip .md bulundugu icin indekslenmeyen .pdf dosyalari. */
   shadowed: string[];
+}
+
+export type VersionState = 'yururlukte' | 'bekliyor' | 'arsiv' | 'geri-cekildi';
+
+export interface DocumentVersion {
+  id: number;
+  version: number;
+  effectiveFrom: string;
+  note: string | null;
+  createdAt: string;
+  createdBy: string;
+  bytes: number;
+  source: string;
+  state: VersionState;
+}
+
+export interface VersionListResponse {
+  docTitle: string;
+  currentVersion: number | null;
+  versions: DocumentVersion[];
+}
+
+export interface VersionTextResponse {
+  docTitle: string;
+  version: number;
+  effectiveFrom: string;
+  note: string | null;
+  createdAt: string;
+  createdBy: string;
+  state: VersionState;
+  content: string;
+}
+
+export interface DiffLine {
+  kind: 'ayni' | 'eklendi' | 'silindi' | 'atlandi';
+  text: string;
+  count?: number;
+}
+
+export interface DiffResponse {
+  docTitle: string;
+  a: number;
+  b: number;
+  aEffectiveFrom: string;
+  bEffectiveFrom: string;
+  lines: DiffLine[];
+  added: number;
+  removed: number;
+  truncated: boolean;
 }
 
 export interface CorpusFinding {
@@ -89,6 +168,12 @@ export interface AuthStatus {
 export interface AuditCitation {
   doc: string;
   section: string;
+  /**
+   * Yanitin dayandigi surumun degismez kimligi. Sprint 2 oncesi satirlarda
+   * ve surum kaydi olusmadan indekslenmis dokumanlarda bulunmaz.
+   */
+  versionId?: number;
+  version?: number;
 }
 
 export interface AuditRow {

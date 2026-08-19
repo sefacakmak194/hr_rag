@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CitationList } from './CitationBadge';
 import DetailsBlock from './DetailsBlock';
-import type { AnswerDetails, Citation, Message } from '../types';
+import type { AnswerBasis, AnswerDetails, Citation, Message } from '../types';
 
 const SUGGESTIONS = [
   'Ne iş yaparsın?',
@@ -107,6 +107,7 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
           let parsed: {
             token?: string;
             citations?: Citation[];
+            basis?: AnswerBasis;
             error?: string;
             text?: string;
             reason?: string;
@@ -120,7 +121,7 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
           }
 
           if (pendingEvent === 'metadata' && parsed.citations) {
-            patchLast((m) => ({ ...m, citations: parsed.citations }));
+            patchLast((m) => ({ ...m, citations: parsed.citations, basis: parsed.basis }));
           } else if (pendingEvent === 'replace' && parsed.text) {
             // Model anlamsiz metin uretti; yerine mevzuatin birebir alintisi.
             patchLast((m) => ({ ...m, content: parsed.text!, replaced: true }));
@@ -212,6 +213,7 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
               {m.streaming && <span className="caret" />}
               {m.streaming && !m.content && <span className="thinking">yanıt üretiliyor…</span>}
             </div>
+            {m.role === 'assistant' && !m.streaming && m.basis && <BasisNote basis={m.basis} />}
             {m.role === 'assistant' && !m.streaming && m.details && (
               <DetailsBlock details={m.details} />
             )}
@@ -241,6 +243,29 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
         </button>
       </form>
     </div>
+  );
+}
+
+/**
+ * "Bu yanıt … tarihli sürüme dayanmaktadır."
+ *
+ * Neden gerekli: mevzuat değişir. Bugünkü doğru yanıt, üç ay sonra ekran
+ * görüntüsü olarak dolaşırken yanlış hale gelir. Yürürlük tarihini yanıtın
+ * yanına yazmak, cevabı zaman içinde konumlandırır — kullanıcı "acaba bu
+ * güncel mi" diye sormak zorunda kalmaz.
+ */
+function BasisNote({ basis }: { basis: AnswerBasis }) {
+  const date = new Date(basis.effectiveFrom).toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return (
+    <p className="basis-note" title={`${basis.doc} · sürüm ${basis.version}`}>
+      Bu yanıt <strong>{date}</strong> tarihinde yürürlüğe giren {basis.version}. sürüme
+      dayanmaktadır.
+    </p>
   );
 }
 

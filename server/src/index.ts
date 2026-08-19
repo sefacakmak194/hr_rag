@@ -3,7 +3,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import chatRoute from './routes/chat.route.js';
 import documentsRoute from './routes/documents.route.js';
+import versionsRoute from './routes/versions.route.js';
 import authRoute from './routes/auth.route.js';
+import { promoteDueVersions } from './services/corpusSync.service.js';
 import { attachPrincipal } from './middleware/session.js';
 import { checkFoundryHealth } from './services/foundryClient.service.js';
 import { countChunks, listDocuments, SYSTEM_PRINCIPAL } from './services/vectorStore.service.js';
@@ -36,7 +38,7 @@ app.use((req, res, next) => {
   // Oturum cerezi capraz kokende (Vite 5173 -> sunucu 5273) gonderilebilsin.
   // Bu basliksiz tarayici cerezi ne gonderir ne de kaydeder.
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -72,6 +74,7 @@ app.use(attachPrincipal);
 app.use('/api', authRoute);
 app.use('/api', chatRoute);
 app.use('/api', documentsRoute);
+app.use('/api', versionsRoute);
 
 // Paketlenmis modda arayuz de bu sunucudan servis edilir (ayri Vite gerekmez).
 if (HAS_STATIC_UI) {
@@ -105,6 +108,28 @@ app.listen(SERVER_PORT, () => {
       );
     })
     .catch(() => {});
+
+  // Yururluk tarihi gelmis politika surumlerini korpusa al (Sprint 2).
+  //
+  // ACILISTA cagrilmasi sart: sunucu kapaliyken gecen bir yururluk tarihi
+  // aksi halde sonsuza kadar beklerdi. Saatlik tekrar, gun icinde acik kalan
+  // kurulumlar icin — dakikalik kontrol gereksiz, yururluk tarihleri gunluk
+  // cozunurluktedir. Zamanlayici surecin kapanmasini engellemesin diye
+  // `unref` ediliyor.
+  const promote = () =>
+    promoteDueVersions()
+      .then((r) => {
+        if (r.promoted.length) {
+          console.log(`  Yururluge alindi   →  ${r.promoted.join(', ')} (indeks: ${r.indexedChunks} parca)`);
+        }
+        if (r.conflicts.length) {
+          console.warn(`  Bekleyen surum cakismasi: ${r.conflicts.join(', ')} — dokuman bu arada degismis.`);
+        }
+      })
+      .catch((e) => console.warn('  Surum yururluge alinamadi:', (e as Error).message));
+
+  promote();
+  setInterval(promote, 3600_000).unref();
 
   // Ilk sorgunun gecikmesini dusurmek icin embedding modelini isit.
   warmupEmbeddingModel()

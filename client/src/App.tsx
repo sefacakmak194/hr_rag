@@ -73,7 +73,7 @@ export default function App() {
 
       <main className={showDocs || showAudit ? 'with-docs' : undefined}>
         <ChatWindow onActivity={refresh} />
-        {showDocs && canManage(user) && <DocumentManager onChanged={refresh} />}
+        {showDocs && canManage(user) && <DocumentManager user={user} onChanged={refresh} />}
         {showAudit && <AuditPanel user={user} />}
       </main>
 

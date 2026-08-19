@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CorpusAudit, DocumentInfo, DocumentsResponse } from '../types';
+import VersionHistory from './VersionHistory';
+import type { CorpusAudit, DocumentInfo, DocumentsResponse, SessionUser } from '../types';
 
 /**
  * Korpus yonetimi paneli.
@@ -30,7 +31,13 @@ function toBase64(file: File): Promise<string> {
   });
 }
 
-export default function DocumentManager({ onChanged }: { onChanged?: () => void }) {
+export default function DocumentManager({
+  user,
+  onChanged,
+}: {
+  user: SessionUser;
+  onChanged?: () => void;
+}) {
   const [data, setData] = useState<DocumentsResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -38,6 +45,14 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
   const [audit, setAudit] = useState<CorpusAudit | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Yuklemeye eslik eden surum ustverisi (Sprint 2).
+  //
+  // Bos birakilabilir: not istege bagli, tarih bossa yukleme ani kullanilir.
+  // Tarih GELECEKTE ise dosya korpusa girmez, yururluk tarihini bekler.
+  const [note, setNote] = useState('');
+  const [effectiveFrom, setEffectiveFrom] = useState('');
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -74,7 +89,12 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
         const res = await fetch('/api/documents', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: file.name, contentBase64 }),
+          body: JSON.stringify({
+            name: file.name,
+            contentBase64,
+            note: note.trim() || undefined,
+            effectiveFrom: effectiveFrom || undefined,
+          }),
         });
         const body = await res.json();
 
@@ -82,11 +102,20 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
           messages.push(`${file.name}: ${body.error ?? `HTTP ${res.status}`}`);
           continue;
         }
-        messages.push(
-          `${file.name} ${body.replaced ? 'güncellendi' : 'eklendi'} · indeks ${body.indexedChunks} parça` +
-            (body.hint ? ` · ${body.hint}` : ''),
-        );
-        if (body.warning) warning = body.warning;
+
+        // Ileri tarihli yuklemede korpus DEGISMEZ; mesaji ayirmak sart,
+        // aksi halde kullanici degisikligin hemen yururlukte oldugunu sanir.
+        if (body.scheduled) {
+          messages.push(`${file.name} · ${body.message}`);
+        } else {
+          messages.push(
+            `${file.name} ${body.replaced ? 'güncellendi' : 'eklendi'} · sürüm ${body.version ?? '—'}` +
+              `${body.versionCreated ? ' (yeni)' : ' (içerik aynı, sürüm açılmadı)'}` +
+              ` · indeks ${body.indexedChunks} parça` +
+              (body.hint ? ` · ${body.hint}` : ''),
+          );
+          if (body.warning) warning = body.warning;
+        }
       } catch (e) {
         messages.push(`${file.name}: ${(e as Error).message}`);
       }
@@ -97,8 +126,31 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
       kind: warning ? 'warn' : 'ok',
       text: messages.join('\n') + (warning ? `\n\n${warning}` : ''),
     });
+    // Ustveri tek yukleme icindir; birakilirsa bir sonraki dosyaya sessizce
+    // yanlis not/tarih yapisirdi.
+    setNote('');
+    setEffectiveFrom('');
     await refresh();
     onChanged?.();
+  }
+
+  /** Planlanmis (bekleyen) bir sürümden vazgeçme. */
+  async function cancelPending(name: string) {
+    if (!confirm(`"${name}" için planlanmış sürüm iptal edilecek. Onaylıyor musunuz?`)) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(name)}/pending`, {
+        method: 'DELETE',
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      setNotice({ kind: 'warn', text: `${name} için planlanmış sürüm geri çekildi.` });
+    } catch (e) {
+      setNotice({ kind: 'error', text: (e as Error).message });
+    }
+    setBusy(false);
+    await refresh();
   }
 
   async function remove(doc: DocumentInfo) {
@@ -184,7 +236,58 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
         {busy ? 'İndeks kuruluyor…' : 'Markdown, Word veya PDF dosyalarını buraya sürükleyin · ya da tıklayın'}
       </div>
 
+      {/* Sürüm üstverisi. Yükleme öncesinde doldurulur; boş bırakılabilir. */}
+      <div className="docs-meta">
+        <label>
+          <span>Değişiklik notu</span>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="örn. yazım hatası düzeltmesi"
+            disabled={busy}
+          />
+        </label>
+        <label>
+          <span>Yürürlük tarihi</span>
+          <input
+            type="date"
+            value={effectiveFrom}
+            onChange={(e) => setEffectiveFrom(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+        <small>
+          Tarih ileri bir gün ise doküman korpusa <strong>o gün</strong> alınır; o zamana kadar
+          yanıtlar yürürlükteki sürüme dayanmayı sürdürür.
+        </small>
+      </div>
+
       {notice && <div className={`docs-notice docs-notice-${notice.kind}`}>{notice.text}</div>}
+
+      {data && data.pending.length > 0 && (
+        <div className="docs-pending">
+          <h3>Yürürlüğe girmeyi bekleyen sürümler</h3>
+          <ul>
+            {data.pending.map((p) => (
+              <li key={p.name} className={p.conflict ? 'pending-conflict' : undefined}>
+                <span className="pending-name">{p.name}</span>
+                <span className="pending-date">
+                  s{p.version} · {new Date(p.effectiveFrom).toLocaleDateString('tr-TR')}
+                </span>
+                {p.note && <span className="pending-note">{p.note}</span>}
+                {p.conflict && (
+                  <span className="pending-warn">
+                    çakışma: doküman bu arada değişti, planlanmış sürüm uygulanamaz
+                  </span>
+                )}
+                <button onClick={() => cancelPending(p.name)} disabled={busy} title="İptal et">
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {audit && audit.findings.length > 0 && (
         <div className="audit">
@@ -229,9 +332,20 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
               <span className="doc-name" title={doc.name}>
                 {doc.name}
               </span>
+              {doc.version !== null && <span className="doc-version">s{doc.version}</span>}
+              {doc.accessLabel !== 'genel' && (
+                <span className={`doc-label doc-label-${doc.accessLabel}`}>{doc.accessLabel}</span>
+              )}
               <span className="doc-meta">
                 {shadowed ? 'aynı adlı üst biçim tercih edildi' : `${doc.chunks} parça`} · {prettySize(doc.bytes)}
               </span>
+              <button
+                className="doc-history"
+                onClick={() => setHistoryFor(historyFor === doc.name ? null : doc.name)}
+                title="Sürüm geçmişi"
+              >
+                Geçmiş
+              </button>
               <button className="doc-remove" onClick={() => remove(doc)} disabled={busy} title="Sil">
                 ×
               </button>
@@ -239,6 +353,21 @@ export default function DocumentManager({ onChanged }: { onChanged?: () => void 
           );
         })}
       </ul>
+
+      {historyFor && (
+        <VersionHistory
+          doc={historyFor}
+          user={user}
+          accessLabel={
+            data?.documents.find((d) => d.name === historyFor)?.accessLabel ?? 'genel'
+          }
+          onLabelChanged={() => {
+            refresh();
+            onChanged?.();
+          }}
+          onClose={() => setHistoryFor(null)}
+        />
+      )}
     </section>
   );
 }

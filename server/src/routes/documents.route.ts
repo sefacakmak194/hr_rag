@@ -19,14 +19,22 @@ import { Router, type Request, type Response } from 'express';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CORPUS_DIR } from '../config/constants.js';
-import { runIngestion } from '../services/ingestion.service.js';
+import { CORPUS_DIR, PENDING_DIR } from '../config/constants.js';
 import { extractChunks } from '../services/chunker.js';
 import { readDocument, shadowedFiles, SUPPORTED_EXT } from '../services/documentReader.service.js';
-import { countChunks, listDocuments, resetStore, resetLexicalIndex } from '../services/vectorStore.service.js';
+import { countChunks, listDocuments, getDb } from '../services/vectorStore.service.js';
 import { requireAuth, requireDocumentManager } from '../middleware/session.js';
 import type { Principal } from '../services/identity.service.js';
 import { auditCorpus } from '../services/corpusAudit.service.js';
+import { reindex, listPending, discardPending } from '../services/corpusSync.service.js';
+import {
+  accessLabelOf,
+  canSeeDocument,
+  currentVersionsFor,
+  normalizeEffectiveFrom,
+  recordVersion,
+  withdrawDocument,
+} from '../services/versioning.service.js';
 
 const router = Router();
 
@@ -68,33 +76,6 @@ export function safeName(raw: unknown): string | null {
   return base;
 }
 
-// ------------------------------------------------------------------ mutex
-let reindexing: Promise<void> | null = null;
-
-/**
- * Korpusu bastan indeksler. Ayni anda yalnizca bir kosum olur; ikinci cagri
- * devam eden kosumu bekler ve ardindan kendi kosumunu yapar.
- */
-async function reindex(): Promise<{ chunks: number; error?: string }> {
-  while (reindexing) await reindexing.catch(() => {});
-
-  let done!: () => void;
-  reindexing = new Promise<void>((r) => (done = r));
-
-  try {
-    await runIngestion(CORPUS_DIR);
-    return { chunks: countChunks() };
-  } catch (error) {
-    // Korpus bosaldiysa runIngestion hata atar; depo zaten sifirlanmis olur.
-    resetStore();
-    resetLexicalIndex();
-    return { chunks: 0, error: (error as Error).message };
-  } finally {
-    done();
-    reindexing = null;
-  }
-}
-
 /**
  * Korpus degisince esikler yeniden kalibre edilmelidir (bkz. data/KAPSAM.md).
  * Bu uyari sessizce gecilmesin diye her degisiklik yanitinda doner.
@@ -105,30 +86,56 @@ const CALIBRATION_WARNING =
 
 // ------------------------------------------------------------------- liste
 router.get('/documents', requireAuth, (req: Request, res: Response) => {
-  // Liste kimlige gore filtrelenir: dokuman ADI bile bilgi tasir.
-  const indexed = new Map(listDocuments(req.principal as Principal).map((d) => [d.docTitle, d.chunks]));
+  const principal = req.principal as Principal;
+  const indexed = new Map(listDocuments(principal).map((d) => [d.docTitle, d.chunks]));
 
-  const files = fs.existsSync(CORPUS_DIR)
-    ? fs
-        .readdirSync(CORPUS_DIR)
-        .filter((f) => ALLOWED_EXT.has(path.extname(f).toLowerCase()))
-        .sort()
-    : [];
+  /**
+   * SIZINTI DUZELTMESI (Sprint 2'de bulundu, Sprint 1'den kalma).
+   *
+   * Liste DOSYA SISTEMINDEN kuruluyor, `listDocuments`ten degil — cunku korpusta
+   * durup henuz indekslenmemis dosyalar da gorunmeli. Ama etiket filtresi
+   * YALNIZCA parca sayisina uygulaniyordu; dosya ADLARI herkese gidiyordu.
+   *
+   * Bu, Sprint 1'in cikis olcutunu ("korpus listesinde yok") HTTP duzeyinde
+   * deliyordu. Servis katmani testleri `listDocuments`i dogruluyor ve geciyordu;
+   * ucun kendisi test edilmemisti. Dokuman adi tek basina bilgidir —
+   * "ust_yonetim_ucret_skalasi.md" gorulen bir baslik zaten sizintidir.
+   */
+  const files = (
+    fs.existsSync(CORPUS_DIR)
+      ? fs.readdirSync(CORPUS_DIR).filter((f) => ALLOWED_EXT.has(path.extname(f).toLowerCase()))
+      : []
+  )
+    .filter((name) => canSeeDocument(getDb(), name, principal))
+    .sort();
+
+  // Yururlukteki surum tek sorguda gelir; dosya basina sorgu atmak gereksiz.
+  const versions = currentVersionsFor(getDb(), files);
 
   const documents = files.map((name) => {
     const stat = fs.statSync(path.join(CORPUS_DIR, name));
+    const version = versions.get(name);
     return {
       name,
       ext: path.extname(name).toLowerCase().slice(1),
       bytes: stat.size,
       modified: stat.mtime.toISOString(),
       chunks: indexed.get(name) ?? 0,
+      version: version?.version ?? null,
+      effectiveFrom: version?.effectiveFrom ?? null,
+      accessLabel: accessLabelOf(getDb(), name),
     };
   });
 
+  // Bekleyen surumler de kimlige gore suzulur: bir dokumanin DEGISECEK olmasi
+  // tek basina bilgi tasir.
+  const pending = listPending().filter((p) => canSeeDocument(getDb(), p.name, principal));
+
   res.json({
     corpusDir: CORPUS_DIR,
+    pendingDir: PENDING_DIR,
     documents,
+    pending,
     indexedChunks: countChunks(),
     // Ayni taban ada sahip birden fazla bicim varsa yalnizca en yuksek
     // oncelikli olan indekslenir (.md > .docx > .pdf); digerleri golgelenir.
@@ -141,9 +148,11 @@ router.get('/documents', requireAuth, (req: Request, res: Response) => {
  * Celiski, tekrar ve yapi sorunlarini raporlar. Gercek bir IK arsivi temiz
  * degildir; bu ucu sessizce yanlis cevap uretir (bkz. corpusAudit.service).
  */
-router.get('/corpus/audit', requireDocumentManager, (_req: Request, res: Response) => {
+router.get('/corpus/audit', requireDocumentManager, (req: Request, res: Response) => {
   try {
-    res.json(auditCorpus());
+    // Rapor kimlige gore daraltilir: bulgular dokuman adini, madde basligini
+    // ve celisen sayisal degerleri tasir — yani icerik sizdirabilir.
+    res.json(auditCorpus(req.principal as Principal));
   } catch (error) {
     res.status(500).json({ error: `Denetim başarısız: ${(error as Error).message}` });
   }
@@ -151,7 +160,7 @@ router.get('/corpus/audit', requireDocumentManager, (_req: Request, res: Respons
 
 // ------------------------------------------------------------------ yukleme
 router.post('/documents', requireDocumentManager, async (req: Request, res: Response) => {
-  const { name, contentBase64 } = req.body ?? {};
+  const { name, contentBase64, note, effectiveFrom } = req.body ?? {};
 
   const file = safeName(name);
   if (!file) {
@@ -162,6 +171,24 @@ router.post('/documents', requireDocumentManager, async (req: Request, res: Resp
   if (typeof contentBase64 !== 'string' || !contentBase64) {
     return res.status(400).json({ error: 'Dosya içeriği boş.' });
   }
+
+  // GORMEDIGINI EZEMEZSIN. `ik` rolu yukleme yetkisine sahip; ama `yonetici`
+  // etiketli bir dokumanin uzerine ayni adla yazabilseydi, hem iceriginin
+  // yerini alir hem de dosyanin VARLIGINI ogrenirdi. Yanit, olmayan dosyayla
+  // ayni: 404.
+  if (fs.existsSync(path.join(CORPUS_DIR, file)) && !canSeeDocument(getDb(), file, req.principal as Principal)) {
+    return res.status(404).json({ error: 'Doküman bulunamadı.' });
+  }
+
+  // Yururluk tarihi ONCE dogrulanir: gecersiz tarihle dosya yazmak, korpusu
+  // surum kaydi olmayan bir metinle basbasa birakirdi.
+  let effective: string;
+  try {
+    effective = normalizeEffectiveFrom(effectiveFrom);
+  } catch (error) {
+    return res.status(400).json({ error: (error as Error).message });
+  }
+  const scheduled = effective > new Date().toISOString();
 
   let buffer: Buffer;
   try {
@@ -182,6 +209,10 @@ router.post('/documents', requireDocumentManager, async (req: Request, res: Resp
   // dolgu metni 0.2 sn'de reddedildi ve korpusa hic yazilmadi.)
   const tmpPath = path.join(os.tmpdir(), `phr-upload-${Date.now()}-${file}`);
   let hint: string | undefined;
+  // Cikarilmis metin surum arsivine gider; ileri tarihli yuklemede korpus hic
+  // degismedigi icin metnin TEK kaynagi burasidir.
+  let extracted = '';
+  let sourceKind = 'markdown';
 
   try {
     fs.writeFileSync(tmpPath, buffer);
@@ -202,6 +233,9 @@ router.post('/documents', requireDocumentManager, async (req: Request, res: Resp
     if (read.source === 'pdf-ocr') {
       hint = 'Metin katmanı bulunamadı; içerik OCR ile okundu. Tanıma hatalarına karşı yanıtları örneklem üzerinden doğrulayın.';
     }
+
+    extracted = text;
+    sourceKind = read.source;
 
     const chunkCount = extractChunks(text).length;
     if (chunkCount > MAX_CHUNKS_PER_DOC) {
@@ -224,16 +258,68 @@ router.post('/documents', requireDocumentManager, async (req: Request, res: Resp
     fs.rmSync(tmpPath, { force: true });
   }
 
+  const actor = (req.principal as Principal).username;
+
   try {
+    // ------------------------------------------------- ileri tarihli yukleme
+    //
+    // Yururluk tarihi gelecekteyse korpus DEGISMEZ. Dosya bekleme dizinine
+    // yazilir, surum kaydi hemen acilir (planlanmis degisiklik de bir olaydir)
+    // ve tarihi geldiginde corpusSync tasir. Indeks yeniden kurulmaz: sistem
+    // henuz yururlukte olmayan bir kurala gore cevap vermemelidir.
+    if (scheduled) {
+      fs.mkdirSync(PENDING_DIR, { recursive: true });
+      fs.writeFileSync(path.join(PENDING_DIR, file), buffer);
+
+      const { row } = recordVersion(getDb(), {
+        docTitle: file,
+        content: extracted,
+        source: sourceKind,
+        bytes: buffer.byteLength,
+        actor,
+        note: typeof note === 'string' ? note : undefined,
+        effectiveFrom: effective,
+      });
+
+      return res.json({
+        ok: true,
+        name: file,
+        scheduled: true,
+        version: row.version,
+        effectiveFrom: row.effectiveFrom,
+        bytes: buffer.byteLength,
+        indexedChunks: countChunks(),
+        hint,
+        message:
+          `Sürüm ${row.version} kaydedildi ve ${new Date(row.effectiveFrom).toLocaleDateString('tr-TR')} ` +
+          'tarihinde yürürlüğe girecek. O tarihe kadar yanıtlar mevcut sürüme dayanmaya devam eder.',
+      });
+    }
+
+    // ------------------------------------------------------ hemen yururluge
     fs.mkdirSync(CORPUS_DIR, { recursive: true });
     const replaced = fs.existsSync(path.join(CORPUS_DIR, file));
     fs.writeFileSync(path.join(CORPUS_DIR, file), buffer);
 
-    const result = await reindex();
+    // Surum kaydini indeksleme acar (bkz. ingestion.service); not ve tarih
+    // oraya tasinir ki elle kopyalanan dosyayla ayni yoldan gecsin.
+    const result = await reindex({
+      actor,
+      versionMeta: {
+        [file]: { note: typeof note === 'string' ? note : undefined, effectiveFrom: effective },
+      },
+    });
+
+    const version = currentVersionsFor(getDb(), [file]).get(file);
+
     res.json({
       ok: true,
       name: file,
       replaced,
+      scheduled: false,
+      version: version?.version ?? null,
+      effectiveFrom: version?.effectiveFrom ?? null,
+      versionCreated: result.changed.includes(file),
       bytes: buffer.byteLength,
       indexedChunks: result.chunks,
       indexError: result.error,
@@ -251,14 +337,25 @@ router.delete('/documents/:name', requireDocumentManager, async (req: Request, r
   if (!file) return res.status(400).json({ error: 'Geçersiz dosya adı.' });
 
   const full = path.join(CORPUS_DIR, file);
-  if (!fs.existsSync(full)) return res.status(404).json({ error: 'Doküman bulunamadı.' });
+  // Gormedigini silemezsin — yoklugu ile yetkisizligi AYNI yanit alir.
+  if (!fs.existsSync(full) || !canSeeDocument(getDb(), file, req.principal as Principal)) {
+    return res.status(404).json({ error: 'Doküman bulunamadı.' });
+  }
 
   try {
     fs.unlinkSync(full);
-    const result = await reindex();
+
+    // Surum satirlari SILINMEZ, geri cekilir: gecmis yanitlarin dayanagi
+    // dokuman korpustan cikinca da okunabilir kalmali. Bekleyen bir surum
+    // varsa dosyasi da temizlenir — dayanagi kalmadi.
+    const withdrawn = withdrawDocument(getDb(), file);
+    discardPending(file);
+
+    const result = await reindex({ actor: (req.principal as Principal).username });
     res.json({
       ok: true,
       name: file,
+      withdrawnVersions: withdrawn,
       indexedChunks: result.chunks,
       indexError: result.error,
       warning: CALIBRATION_WARNING,
@@ -269,9 +366,14 @@ router.delete('/documents/:name', requireDocumentManager, async (req: Request, r
 });
 
 // ------------------------------------------------------- elle yeniden indeks
-router.post('/documents/reindex', requireDocumentManager, async (_req: Request, res: Response) => {
-  const result = await reindex();
-  res.json({ ok: !result.error, indexedChunks: result.chunks, indexError: result.error });
+router.post('/documents/reindex', requireDocumentManager, async (req: Request, res: Response) => {
+  const result = await reindex({ actor: (req.principal as Principal).username });
+  res.json({
+    ok: !result.error,
+    indexedChunks: result.chunks,
+    indexError: result.error,
+    changed: result.changed,
+  });
 });
 
 export default router;

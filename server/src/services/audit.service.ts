@@ -21,6 +21,19 @@ import type { AccessLabel, Principal } from './identity.service.js';
 export interface AuditCitation {
   doc: string;
   section: string;
+  /**
+   * Yanitin dayandigi POLITIKA SURUMUNUN kimligi (Sprint 2).
+   *
+   * DENETIMIN ASIL CIVISI BURASI. Dosya adi + madde basligi, dokuman
+   * guncellendikten sonra YENI metne cozulur; yani kayit "su maddeye
+   * dayandi" der ama o madde artik baska bir sey soyler. Surum kimligi
+   * degismez bir arsiv satirina isaret eder.
+   *
+   * Istege bagli: Sprint 2 oncesi yazilmis satirlarda ve surum kaydi
+   * olusmadan once indekslenmis dokumanlarda bulunmaz.
+   */
+  versionId?: number;
+  version?: number;
 }
 
 export interface AuditEntry {

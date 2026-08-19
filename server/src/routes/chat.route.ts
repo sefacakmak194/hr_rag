@@ -1,8 +1,9 @@
 import { Router, type Request, type Response } from 'express';
 import { generateQueryEmbedding } from '../services/embedding.service.js';
-import { queryTopKChunks, findSectionText } from '../services/vectorStore.service.js';
+import { queryTopKChunks, findSectionText, getDb } from '../services/vectorStore.service.js';
 import { requireAuth } from '../middleware/session.js';
-import { recordAudit } from '../services/audit.service.js';
+import { recordAudit, type AuditCitation } from '../services/audit.service.js';
+import { currentVersionsFor } from '../services/versioning.service.js';
 import type { Principal } from '../services/identity.service.js';
 import { classifyIntent } from '../services/intent.service.js';
 import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
@@ -54,6 +55,48 @@ const LEAK_CUT = /(?:>>\s*)?CEVAP CÜMLESİ\s*:|TAM METİN\s*:|\[[\w.\-]+\.(?:md
 const LEAK_HEAD = 120;
 const LEAK_TAIL = 24;
 
+/**
+ * Alintilari YURURLUKTEKI politika surumuyle etiketler (Sprint 2).
+ *
+ * Iki ayri isi ayni anda goruyor:
+ *  - Kullaniciya "bu yanit hangi surume dayaniyor" bilgisini vermek.
+ *  - Denetim kaydina dosya adi yerine DEGISMEZ bir surum kimligi yazmak.
+ *
+ * Surum kaydi olmayan dokumanlarda alanlar bos kalir; yanit yine uretilir.
+ * Surumleme bir yanit onkosulu DEGIL, yanitin izidir.
+ */
+interface VersionedCitation extends AuditCitation {
+  score?: number;
+  evidence?: string;
+  effectiveFrom?: string;
+}
+
+function attachVersions(citations: VersionedCitation[]): VersionedCitation[] {
+  if (!citations.length) return citations;
+
+  const versions = currentVersionsFor(
+    getDb(),
+    citations.map((c) => c.doc),
+  );
+
+  return citations.map((c) => {
+    const v = versions.get(c.doc);
+    return v ? { ...c, versionId: v.id, version: v.version, effectiveFrom: v.effectiveFrom } : c;
+  });
+}
+
+/**
+ * Yanitin altinda gosterilen "su tarihli surume dayanmaktadir" bilgisi.
+ * BIRINCIL alintidan alinir; yanit onun uzerine kurulur.
+ */
+function basisOf(
+  citations: VersionedCitation[],
+): { doc: string; version: number; effectiveFrom: string } | undefined {
+  const primary = citations[0];
+  if (!primary?.version || !primary.effectiveFrom) return undefined;
+  return { doc: primary.doc, version: primary.version, effectiveFrom: primary.effectiveFrom };
+}
+
 /** Bozuk yanit yerine gosterilecek mevzuat alintisini kurar. */
 function firstSentences(text: string, count: number): string {
   const body = text.replace(/^[^\n]*\n/, ''); // bolum basligi satirini at
@@ -80,11 +123,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
    * uretiyor"). Yazim asla firlatmaz; denetim hatasi kullanicinin yanitini
    * kaybettirmemeli.
    */
-  const audit = (
-    citations: { doc: string; section: string }[],
-    answered: boolean,
-    resolvedQuery?: string,
-  ) => {
+  const audit = (citations: AuditCitation[], answered: boolean, resolvedQuery?: string) => {
     recordAudit({
       principal,
       question: typeof message === 'string' ? message : '',
@@ -140,16 +179,17 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
   /** Hazir (LLM'siz) yaniti gonderip turu hafizaya yazar. */
   const respondDirectly = (
     text: string,
-    citations: { doc: string; section: string }[],
+    citations: AuditCitation[],
     meta: Record<string, unknown>,
     resolvedQuestion: string,
   ) => {
-    send({ citations, ...meta }, 'metadata');
+    const versioned = attachVersions(citations);
+    send({ citations: versioned, basis: basisOf(versioned), ...meta }, 'metadata');
     send({ token: text });
     sendDetails(citations);
     res.write('data: [DONE]\n\n');
     recordTurn(session.id, { question: message, resolvedQuestion, answer: text, citations });
-    audit(citations, true, resolvedQuestion !== message ? resolvedQuestion : undefined);
+    audit(versioned, true, resolvedQuestion !== message ? resolvedQuestion : undefined);
     return res.end();
   };
 
@@ -220,13 +260,18 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
 
     // 3. Istemciye kaynak bilgisi metadata event'ini gonder.
     // Secilen kanit cumlesi de gonderilir; arayuz alintiyi metinle gosterir.
-    const citations = contextChunks.map((c, i) => ({
-      doc: c.docTitle,
-      section: c.section,
-      score: Number(c.score.toFixed(4)),
-      evidence: evidences[i]?.sentence,
-    }));
-    send({ citations, threshold: SIMILARITY_THRESHOLD, rewritten }, 'metadata');
+    const citations = attachVersions(
+      contextChunks.map((c, i) => ({
+        doc: c.docTitle,
+        section: c.section,
+        score: Number(c.score.toFixed(4)),
+        evidence: evidences[i]?.sentence,
+      })),
+    );
+    send(
+      { citations, basis: basisOf(citations), threshold: SIMILARITY_THRESHOLD, rewritten },
+      'metadata',
+    );
 
     // 3b. Halusinasyon engelleme: esigi gecen hicbir baglam yoksa LLM'e hic gitme.
     if (contextChunks.length === 0) {
@@ -401,7 +446,14 @@ ${SYSTEM_PROMPT_RULES}`;
       citations: citations.map((c) => ({ doc: c.doc, section: c.section })),
     });
     audit(
-      citations.map((c) => ({ doc: c.doc, section: c.section })),
+      // Skor ve kanit cumlesi denetime yazilmaz (gecici olculer); SURUM
+      // KIMLIGI yazilir — gecmis yanitin dayanagini cozen tek sey odur.
+      citations.map((c) => ({
+        doc: c.doc,
+        section: c.section,
+        versionId: c.versionId,
+        version: c.version,
+      })),
       true,
       query !== message ? query : undefined,
     );

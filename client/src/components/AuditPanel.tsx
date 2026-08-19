@@ -61,7 +61,9 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
           r.username,
           r.role,
           r.question ?? '',
-          r.citations.map((c) => `${c.doc} :: ${c.section}`).join(' | '),
+          // Surum numarasi CSV'ye de girer: disa aktarilan kayit, dokuman
+          // sonradan degistiginde de hangi metne dayandigini soylemeli.
+          r.citations.map((c) => `${c.doc} :: ${c.section}${c.version ? ` :: s${c.version}` : ''}`).join(' | '),
           r.answered ? 'evet' : 'hayir',
           r.durationMs,
         ]
@@ -151,6 +153,46 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: 'wa
   );
 }
 
+/**
+ * Denetim satırındaki alıntının dayandığı sürüm metni.
+ *
+ * DENETİMİN ASIL DEĞERİ BURADA. "01_izin.md · Madde 1" bugünkü dosyayı işaret
+ * eder; doküman değiştiyse o yanıtın dayandığı metin artık orada değildir.
+ * Sürüm kimliği ise değişmez bir arşiv satırına gider: o gün ne yazdığı
+ * aynen okunur.
+ */
+function VersionPeek({ versionId, label }: { versionId: number; label: string }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggle() {
+    if (open) return setOpen(false);
+    setOpen(true);
+    if (text || error) return;
+
+    try {
+      const res = await fetch(`/api/versions/${versionId}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      setText(body.content as string);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="audit-version" onClick={toggle} title="O günkü metni göster">
+        {label}
+      </button>
+      {open && (
+        <pre className="audit-version-text">{error ? `Okunamadı: ${error}` : (text ?? 'yükleniyor…')}</pre>
+      )}
+    </>
+  );
+}
+
 function Row({ row }: { row: AuditRow }) {
   const time = new Date(row.at);
   return (
@@ -178,6 +220,13 @@ function Row({ row }: { row: AuditRow }) {
             {row.citations.map((c, i) => (
               <li key={i}>
                 {c.doc} <span className="audit-section">{c.section}</span>
+                {c.versionId ? (
+                  <VersionPeek versionId={c.versionId} label={`s${c.version ?? '?'}`} />
+                ) : (
+                  <span className="audit-noversion" title="Bu satır sürümleme öncesine ait">
+                    sürümsüz
+                  </span>
+                )}
               </li>
             ))}
           </ul>

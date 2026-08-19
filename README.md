@@ -134,9 +134,17 @@ npm run eval       # cevap kalitesi (çalışan sunucu + LLM gerekir)
 npm run compare    # model karşılaştırma matrisi (uzun sürer)
 ```
 
+`/api/chat` kimlik doğrulaması arkasında olduğu için `eval` ve `compare` oturum
+açar: `EVAL_USER` + `EVAL_PASSWORD` verilirse o hesapla giriş yapar, verilmezse
+geçici bir hesap açıp iş bitince siler (bkz. `scripts/eval-auth.ts`).
+
 | Paket | Kapsam |
 |---|---|
 | `test:policy` | 33 test — kademe hesabı, sınır değerleri, korpus tutarlılığı |
+| `test:identity` | 38 test — parola, oturum, roller, denetim değiştirilemezliği |
+| `test:access` | 41 test — erişim filtresi servis katmanında (arama, dayanak, BM25) |
+| `test:versions` | 61 test — sürüm açılma kuralı, yürürlük tarihi, arşiv, fark hesabı |
+| `test:endpoints` | 32 test — **HTTP ucu** düzeyinde erişim kontrolü (gerçek Express) |
 | `test:evidence` | 18 test — cümle/yan cümle bölme, canlı korpus üzerinde kanıt seçimi |
 | `test:documents` | 21 test — dosya adı doğrulaması (dizin geçişi, uzantı kaçışı) |
 | `test:formats` | DOCX okuma, biçim önceliği, taranmış PDF + OCR |
@@ -719,6 +727,47 @@ parçaya düşer ve kaynak gösterimi zayıflar.
 
 ---
 
+## Politika sürümleme
+
+Mevzuat değişir. Sürümleme olmadan bir doküman güncellendiğinde **geçmiş
+yanıtların dayanağı yok olur**: denetim kaydındaki `01_izin.md :: Madde 1`
+alıntısı bugünkü dosyaya çözülür, o gün ne yazdığı hiçbir yerde durmaz.
+
+Her içerik değişikliği bir sürüm açar; sürümün metni arşivlenir ve **silinemez**
+(SQLite tetikleyicisi). Denetim kaydı dosya adı değil **sürüm kimliği** saklar,
+böylece bir yanıtın dayandığı metin yıllar sonra da birebir okunabilir.
+
+```
+Yükleme  →  içerik özeti (sha256) yürürlükteki sürümden farklı mı?
+             ├── hayır → sürüm açılmaz
+             └── evet  → s(n+1), yürürlük tarihi + değişiklik notu ile
+```
+
+Sürüm tetikleyicisi **içerik özetidir**, bir düğme değil: korpus dizinine elle
+kopyalanan bir dosya da geçmişe yazılır. Tek doğruluk kaynağı indekslenmiş
+olandır.
+
+**İleri tarihli yürürlük.** Yürürlük tarihi gelecekteyse dosya korpusa değil
+`data/corpus-pending/` dizinine yazılır — korpus dizini tanımı gereği
+*yürürlükteki* metindir. Tarihi gelince sunucu dosyayı korpusa taşır ve indeksi
+yeniler (açılışta bir kez, sonra saatlik).
+
+**Yanıtın altında** hangi sürüme dayandığı yazar:
+
+> Bu yanıt **01 Ekim 2026** tarihinde yürürlüğe giren 3. sürüme dayanmaktadır.
+
+**Fark görünümü** iki sürüm arasında tam olarak neyin değiştiğini gösterir —
+"güncellendi" bilgisi tek başına işe yaramaz, hangi sayının değiştiği önemlidir.
+LCS satır farkı bağımlılıksız yazıldı; değişmemiş bloklar toplanır, çevresinde
+2 satır bağlam bırakılır.
+
+Erişim etiketi **sürüme değil dokümana** aittir: bir doküman `ik` yapılırsa tüm
+geçmişi de kısıtlanır. Güvenli yön budur.
+
+Ayrıntılı gerekçeler: [`docs/SPRINT-2-TASARIM.md`](docs/SPRINT-2-TASARIM.md).
+
+---
+
 ## Model karşılaştırması
 
 `npm run compare`, **aynı** değerlendirme vakalarını birden çok Foundry Local modeliyle
@@ -844,13 +893,19 @@ private-hr-rag/
 │   │   │   ├── policyCalculator.service.ts  # kademe tabloları
 │   │   │   ├── pdfExtract.service.ts
 │   │   │   ├── ingestion.service.ts
+│   │   │   ├── identity.service.ts      # hesaplar, roller, erişim etiketi
+│   │   │   ├── audit.service.ts         # silinemez denetim kaydı
+│   │   │   ├── versioning.service.ts    # politika sürümleri + arşiv
+│   │   │   ├── corpusSync.service.ts    # indeks kilidi + yürürlüğe alma
+│   │   │   ├── diff.service.ts          # satır düzeyinde sürüm farkı
 │   │   │   └── foundryClient.service.ts # SSE + sağlık kontrolü
-│   │   ├── routes/{chat,documents}.route.ts
+│   │   ├── routes/{chat,documents,versions,auth}.route.ts
 │   │   └── index.ts
 │   └── package.json
 ├── client/
 │   ├── src/
 │   │   ├── components/{ChatWindow,CitationBadge,StatusIndicator,DocumentManager}.tsx
+│   │   ├── components/{AuthGate,AuditPanel,VersionHistory,DetailsBlock}.tsx
 │   │   ├── App.tsx · main.tsx · styles.css · types.ts
 │   └── vite.config.ts
 ├── scripts/
@@ -859,7 +914,9 @@ private-hr-rag/
 │   ├── eval-cases.ts               # paylaşılan değerlendirme vakaları
 │   ├── eval-answers.ts             # uçtan uca cevap kalitesi
 │   ├── compare-models.ts           # model karşılaştırma matrisi
+│   ├── eval-auth.ts                # değerlendirme paketleri için oturum
 │   ├── test-rag.ts · test-policy.ts · test-evidence.ts · test-pdf.ts
+│   ├── test-identity.ts · test-access.ts · test-versions.ts · test-endpoints.ts
 │   ├── md-to-pdf.mjs · build-exe.mjs
 └── README.md
 ```
@@ -872,15 +929,30 @@ private-hr-rag/
 | `/api/chat` | POST | `{ message, sessionId }` → SSE akışı |
 | `/api/session/reset` | POST | `{ sessionId }` → oturum hafızasını siler |
 | `/api/documents` | GET | Korpus listesi, parça sayıları, gölgelenen PDF'ler |
-| `/api/documents` | POST | `{ name, contentBase64 }` → kaydet + yeniden indeksle |
-| `/api/documents/:name` | DELETE | Sil + yeniden indeksle |
+| `/api/documents` | POST | `{ name, contentBase64, note?, effectiveFrom? }` → kaydet + yeniden indeksle |
+| `/api/documents/:name` | DELETE | Sil + sürümleri geri çek + yeniden indeksle |
 | `/api/documents/reindex` | POST | Yalnızca yeniden indeksle |
 | `/api/corpus/audit` | GET | Korpus sağlığı: çelişki, tekrar, yapı bulguları |
+| `/api/documents/:name/versions` | GET | Sürüm geçmişi (durum, yürürlük tarihi, not) |
+| `/api/documents/:name/versions/:v` | GET | Bir sürümün arşivlenmiş tam metni |
+| `/api/documents/:name/diff?a=&b=` | GET | İki sürüm arasındaki satır farkı |
+| `/api/versions/:id` | GET | Sürüm kimliğiyle doğrudan arşiv metni (denetim bağlantısı) |
+| `/api/documents/:name/label` | PATCH | `{ label }` → erişim etiketi (yalnızca yönetici) |
+| `/api/documents/pending` | GET | Yürürlüğe girmeyi bekleyen sürümler |
+| `/api/documents/pending/promote` | POST | Tarihi gelmiş sürümleri elle yürürlüğe al |
+| `/api/documents/:name/pending` | DELETE | Planlanmış sürümden vazgeç |
+| `/api/auth/status` · `/auth/login` · `/auth/logout` · `/auth/setup` · `/auth/users` | — | Kimlik katmanı (Sprint 1) |
+| `/api/audit` | GET | Denetim kaydı (yönetici tümü, diğerleri kendi satırları) |
+
+Erişimi olmayan bir dokümana yapılan istek **404** alır, 403 değil: dokümanın
+var olduğu bilgisi bile sızmamalı.
 
 `/api/chat` SSE olay sırası:
 
 ```
-event: metadata          → { citations: [{ doc, section, score, evidence? }],
+event: metadata          → { citations: [{ doc, section, score, evidence?,
+                                          version?, versionId?, effectiveFrom? }],
+                             basis?: { doc, version, effectiveFrom },
                              threshold, rewritten?, computed?, intent? }
 data:  { token: "..." }  → akan yanıt token'ları
 event: replace           → { text, reason }  (yalnızca bozuk üretim yakalanırsa)
@@ -891,7 +963,9 @@ event: error             → { error, code }   (yalnızca hata durumunda)
 
 `metadata` alanları: `evidence` seçilen kanıt cümlesi, `rewritten` takip sorusunun
 yeniden yazıldığını, `computed` cevabın kademe tablosundan hesaplandığını, `intent`
-sohbet katmanının yanıtladığını gösterir.
+sohbet katmanının yanıtladığını gösterir. `basis` yanıtın dayandığı politika
+sürümüdür ve arayüzde *"Bu yanıt … tarihinde yürürlüğe giren N. sürüme
+dayanmaktadır"* satırı olarak gösterilir; `versionId` denetim kaydına yazılır.
 
 ## Yapılandırma
 

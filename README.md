@@ -1,7 +1,7 @@
 # Private Enterprise HR & Policy Local RAG Assistant
 
 Kurumsal İK mevzuatı üzerinde **%100 çevrim dışı (air-gapped)** çalışan, kaynak gösterimli
-yerel RAG asistanı. **22 doküman / 170 bölüm** ile 10 İK alanını kapsar: çalışma düzeni,
+yerel RAG asistanı. **22 doküman / 172 bölüm** ile 10 İK alanını kapsar: çalışma düzeni,
 izinler, ücret ve yan haklar, istihdam süreci, performans, disiplin, İSG ve uyum (KVKK).
 Kapsamın tam dökümü: [data/KAPSAM.md](data/KAPSAM.md).
 

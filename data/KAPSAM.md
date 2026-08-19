@@ -70,7 +70,7 @@ yani sohbet desteği halüsinasyon engellemesini zayıflatmaz.
 10.000 soruluk tarama (`npm run sweep`) korpusun gerçek İK soru yüzeyinin ancak
 yarısını karşıladığını gösterdi: 495 temel sorudan **119'u hiçbir ifadeyle**
 cevaplanamıyordu. Eksikler kapatıldı — 20 doküman / 94 bölümden **22 doküman /
-170 bölüme** çıkıldı.
+172 bölüme** çıkıldı.
 
 Eklenenler: bilgi güvenliği ve BT kullanımı (21), sürdürülebilirlik ve çalışan
 katılımı (22); mevcut dokümanlara ise sigara/kimlik kartı/sosyal medya/akrabalık

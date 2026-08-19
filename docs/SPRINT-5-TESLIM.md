@@ -12,7 +12,7 @@ Son güncelleme: 19.08.2026
 
 Kurumsal İK mevzuatı üzerinde **hiçbir veri makineyi terk etmeden** çalışan,
 kaynak gösterimli, sürüm takipli ve denetlenebilir bir soru-cevap asistanı.
-Microsoft Foundry Local üzerinde, 22 doküman / 170 bölüm.
+Microsoft Foundry Local üzerinde, 22 doküman / 172 bölüm.
 
 Ayırt edici olan şey model değil, **modelin etrafına konan mühendislik**:
 sistem cevabı bilmediğinde bilmediğini söylüyor, bunu ölçüyoruz, ve
@@ -305,7 +305,7 @@ Bunları saklamak, projenin kendi ilkesine aykırı olurdu.
 
 ## 6. Teslim kontrol listesi
 
-- [x] Korpus 22 doküman / 170 bölüm, kapsam belgesi yazılı
+- [x] Korpus 22 doküman / 172 bölüm, kapsam belgesi yazılı
 - [x] `npm test` — 531 doğrulama, 15 paket
 - [x] `npm run eval` — 51/52
 - [x] CI yeşil (Linux, çevrim dışı)

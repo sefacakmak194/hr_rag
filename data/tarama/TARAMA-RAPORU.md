@@ -1,6 +1,6 @@
 # Tarama raporu — cevapsiz kalan sorular
 
-Tarih: 2026-08-19T18-05-35-415Z
+Tarih: 2026-08-19T23-11-28-623Z
 Sorgu: 10000 (500 temel soru × 20 ifade)
 İndeks: 172 parça · eşik 0.828
 

@@ -189,9 +189,9 @@ export const TOP_K = Number(process.env.TOP_K ?? 3);
  *
  * scripts/calibrate.ts ile hibrit skor uzerinden secildi.
  *
- * 170 parcalik korpus, 38 kapsam-ici / 10 kapsam-disi sorgu (19.08.2026):
- *   w=0.00 (salt vektor) : bosluk 0.0235
- *   w=0.05 (SECILEN)     : ici-min 0.8412  dis-maks 0.8142  bosluk 0.0270  <- 1.1x
+ * 172 parcalik korpus, 38 kapsam-ici / 10 kapsam-disi sorgu (19.08.2026):
+ *   w=0.00 (salt vektor) : bosluk 0.0256
+ *   w=0.05 (SECILEN)     : ici-min 0.8410  dis-maks 0.8006  bosluk 0.0404  <- 1.6x
  *   w>=0.20              : ORTUSUYOR (bosluk negatif)
  *
  * ONCEKI DURUM VE NEDEN DEGISTI. 94 parcalik korpusta bosluk 0.0179 idi ve
@@ -202,12 +202,35 @@ export const TOP_K = Number(process.env.TOP_K ?? 3);
  *      sorun kuculdu. Kalibrasyon betigi artik bu sorgulari olcum disi tutuyor
  *      — aksi halde kapiya hic ulasmayan bir sorgu, kapiyi basarisiz
  *      gosteriyordu ("Sirket araci tahsis ediliyor mu?" 0.8423).
- *   2. Korpus 94 -> 170 parcaya cikti; kapsam-ici sorgular daha iyi karsilik
+ *   2. Korpus 94 -> 172 parcaya cikti; kapsam-ici sorgular daha iyi karsilik
  *      buluyor.
+ *   3. Kapsam-disi bir yanlis komsu ortadan kalkti. Yeni yazilan "Ofis
+ *      Kullanimi ve Kisisel Esya" maddesi "Ofise evcil hayvan getirebilir
+ *      miyim" sorusunu 0.8323 ile cekiyordu; madde daraltilinca kapsam-disi
+ *      maksimum 0.8142'den 0.8006'ya indi.
  *
- * Sonuc: bosluk 0.0179 -> 0.0270 ve esik 0.832 -> 0.828. Esigin DUSMESI
- * beklenenin tersi gorunebilir; sebebi kapsam-disi maksimumun 0.8230'dan
- * 0.8142'ye inmesi, yani asagi taraftaki baskinin azalmasi.
+ * ESIK NEDEN TAM OLARAK 0.828 — iki kisit birlikte
+ *
+ * Kalibrasyon iki ayri bosluk raporluyor (bkz. calibrate.ts, "iki katmanli
+ * gorunum"):
+ *
+ *   kapsam-ici en dusuk                   0.8410
+ *   kapsam-disi en yuksek (TUMU)          0.8424   -> bosluk -0.0014
+ *   kapsam-disi en yuksek (LISTELENMEMIS) 0.8006   -> bosluk +0.0404
+ *
+ * Kapi TEK BASINA tum kapsam-disi sorgulari ayiramiyor; ayiramadigi sorgu
+ * ("Sirket araci tahsis ediliyor mu?" 0.8424) zaten scope.service listesinde
+ * ve oraya bu yuzden konuldu.
+ *
+ * Betigin onerdigi orta nokta 0.821 DENENDI VE GERI ALINDI: o esikte
+ * sartnamenin kabul sorusunun duz hali ("Sirket bana ozel arac tahsisi
+ * yapiyor mu?", 0.8244) kapidan geciyor ve onu yalnizca liste durduruyor.
+ * Iki katmanin ikisi de ayni sorunun ustunde durmali; liste eksik olabilir.
+ *
+ * Baglayici aralik boylece daraliyor:
+ *   alt sinir 0.8244  (kapi sartname sorusunu KENDI reddetsin)
+ *   ust sinir 0.8410  (mesru "Mesai saatleri ne?" elenmesin)
+ * 0.828 bu araligin icinde ve iki ucun ikisine de yaklasik esit uzaklikta.
  *
  * DIKKAT — bosluk hala dar. Korpus her degistiginde yeniden kalibre edin.
  */

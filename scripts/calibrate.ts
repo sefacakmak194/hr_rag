@@ -83,7 +83,7 @@ const outOfScope = [
 ];
 
 /**
- * KAPSAM DISI LISTESINDEKILER OLCUMDEN CIKARILIR.
+ * KAPSAM DISI LISTESINDEKILER AYRI RAPORLANIR — CIKARILMAZ.
  *
  * `scope.service` bu konulari vektor aramasina GIRMEDEN reddediyor; yani
  * skorlari alaka kapisini hic ilgilendirmiyor. Listede kaldiklarinda olcum,
@@ -91,10 +91,21 @@ const outOfScope = [
  * "Sirket araci tahsis ediliyor mu?" 0.8423 ile kapsam-disi maksimumu tek
  * basina yukari cekiyor, oysa o soru kapiya hic ulasmiyor.
  *
- * Cikarilanlar ayrica raporlanir — sessizce elenmis olmasinlar.
+ * AMA TAMAMEN CIKARMAK DA YANLIS — bir kez denendi ve geri alindi.
+ *
+ * Yalnizca listelenmemis sorgularla olculdugunde betik esigi 0.821'e indirmeyi
+ * onerdi. O esikte sartnamenin kabul sorusu ("Sirket bana ozel arac tahsisi
+ * yapiyor mu?") KAPIDAN GECIYOR; uretimde onu yalnizca kapsam listesi
+ * durduruyor. Oysa `scope.service` dosya basinda acikca yaziyor: bu bir sinir
+ * TANIMA yetenegi degil, bir LISTE — ve listeler eksiktir.
+ *
+ * Yani liste yokmus gibi kalibre etmek, listenin tam oldugu bir dunyayi
+ * varsayar. Iki katmanin ikisi de ayni sorunun ustunde durmali. Bu yuzden
+ * asagida IKI bosluk birden raporlanir ve esik DAR olana gore secilir.
  */
 const kapiyaUlasmayan = outOfScope.filter((q) => checkOutOfScope(q));
-const outOfScopeGate = outOfScope.filter((q) => !checkOutOfScope(q));
+/** scope.service'in yakalamadigi, yani KAPININ tek basina durdurmasi gerekenler. */
+const listelenmemis = outOfScope.filter((q) => !checkOutOfScope(q));
 
 if (countChunks() === 0) {
   console.error('\n  Indeks bos. Once `npm run ingest` calistirin.\n');
@@ -120,9 +131,10 @@ const fuse = (c: Components, w: number) => {
 };
 
 console.log(`\n  Hibrit kalibrasyon — ${countChunks()} parca`);
-console.log(`  ${inScope.length} kapsam-ici / ${outOfScopeGate.length} kapsam-disi sorgu (kapiya ULASAN)`);
+console.log(`  ${inScope.length} kapsam-ici / ${outOfScope.length} kapsam-disi sorgu`);
 if (kapiyaUlasmayan.length) {
-  console.log(`  ${kapiyaUlasmayan.length} sorgu scope.service tarafindan zaten reddediliyor, olcum disi:`);
+  console.log(`  Bunlarin ${kapiyaUlasmayan.length} tanesi scope.service tarafindan da reddediliyor,`);
+  console.log(`  ama esik onlara da dayanmali (iki katman, tek sorun):`);
   for (const q of kapiyaUlasmayan) console.log(`    - ${q}`);
 }
 console.log('');
@@ -130,7 +142,7 @@ console.log('');
 const icComp: Components[] = [];
 const disComp: Components[] = [];
 for (const q of inScope) icComp.push(await components(q));
-for (const q of outOfScopeGate) disComp.push(await components(q));
+for (const q of outOfScope) disComp.push(await components(q));
 
 const fmt = (n: number) => n.toFixed(4).padStart(8);
 
@@ -166,6 +178,39 @@ if (best && best.gap > 0) {
   console.log('  UYARI: Hicbir agirlikta temiz ayrim yok.');
 }
 
+/**
+ * IKI KATMANLI OZET — tek bir sayi bu sistemi anlatmiyor.
+ *
+ * Yukaridaki tablo TUM kapsam-disi sorgulari kapsar; yani "kapi tek basina ne
+ * yapabilir" sorusunu yanitlar. Asagidaki ikinci olcum ise scope.service'in
+ * zaten reddettiklerini disarida birakir; yani "kapinin gercekte tasimasi
+ * gereken yuk" nedir.
+ *
+ * Esik ikisinin arasindan secilir: listelenmemis kapsam-disi maksimumun
+ * UZERINDE (kapi kendi isini yapsin) ama kapsam-ici minimumun ALTINDA.
+ */
+{
+  const w = 0.05;
+  const icMin = Math.min(...icComp.map((c) => fuse(c, w)));
+  const tumDisMax = Math.max(...disComp.map((c) => fuse(c, w)));
+  const listelenmemisSkorlar = outOfScope
+    .map((q, i) => ({ q, s: fuse(disComp[i], w) }))
+    .filter((r) => listelenmemis.includes(r.q));
+  const serbestMax = Math.max(...listelenmemisSkorlar.map((r) => r.s));
+
+  console.log(`
+  IKI KATMANLI GORUNUM (w=0.05)
+`);
+  console.log(`    kapsam-ici en dusuk                 : ${icMin.toFixed(4)}`);
+  console.log(`    kapsam-disi en yuksek (TUMU)        : ${tumDisMax.toFixed(4)}  -> bosluk ${(icMin - tumDisMax).toFixed(4)}`);
+  console.log(`    kapsam-disi en yuksek (LISTELENMEMIS): ${serbestMax.toFixed(4)}  -> bosluk ${(icMin - serbestMax).toFixed(4)}`);
+  console.log(`
+    Kapi tek basina TUM kapsam-disi sorgulari ayiramiyor; ayrilmayanlar`);
+  console.log(`    scope.service listesinde ve oraya BILEREK konuldu. Esik, listelenmemis`);
+  console.log(`    maksimumun uzerinde ve kapsam-ici minimumun altinda secilmelidir:`);
+  console.log(`      gecerli aralik: ${serbestMax.toFixed(4)} — ${icMin.toFixed(4)}`);
+}
+
 // En zorlu ornekler — esigin iki yanindaki sinir vakalari
 if (best) {
   const w = best.w;
@@ -173,7 +218,7 @@ if (best) {
     .map((q, i) => ({ q, s: fuse(icComp[i], w) }))
     .sort((a, b) => a.s - b.s)
     .slice(0, 3);
-  const disRanked = outOfScopeGate
+  const disRanked = outOfScope
     .map((q, i) => ({ q, s: fuse(disComp[i], w) }))
     .sort((a, b) => b.s - a.s)
     .slice(0, 3);

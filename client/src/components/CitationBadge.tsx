@@ -11,30 +11,30 @@ function prettyDoc(doc: string): string {
 
 export function CitationBadge({ citation }: { citation: Citation }) {
   // Kanit cumlesi varsa alinti acilabilir olur: kullanici cevabin DAYANDIGI
-  // cumleyi dokumana gitmeden gorur. Kanit yoksa duz rozet olarak kalir.
+  // cumleyi dokumana gitmeden gorur. Kanit yoksa duz satir olarak kalir.
   const body = (
     <>
-      <span className="citation-doc">{prettyDoc(citation.doc)}</span>
-      <span className="citation-sep">→</span>
-      <span className="citation-section">{citation.section}</span>
+      <span className="cite-doc">{prettyDoc(citation.doc)}</span>
+      <span className="cite-sep">→</span>
+      <span className="cite-section">{citation.section}</span>
       {citation.score !== undefined && (
-        <span className="citation-score">{citation.score.toFixed(2)}</span>
+        <span className="cite-score">{citation.score.toFixed(2)}</span>
       )}
     </>
   );
 
   if (!citation.evidence) {
     return (
-      <span className="citation" title={`${citation.doc} → ${citation.section}`}>
-        {body}
-      </span>
+      <div className="cite" title={`${citation.doc} → ${citation.section}`}>
+        <div className="cite-flat">{body}</div>
+      </div>
     );
   }
 
   return (
-    <details className="citation citation-expandable">
+    <details className="cite cite--open">
       <summary title={`${citation.doc} → ${citation.section}`}>{body}</summary>
-      <p className="citation-evidence">“{citation.evidence}”</p>
+      <p className="cite-evidence">“{citation.evidence}”</p>
     </details>
   );
 }
@@ -42,9 +42,9 @@ export function CitationBadge({ citation }: { citation: Citation }) {
 export function CitationList({ citations }: { citations: Citation[] }) {
   if (!citations.length) return null;
   return (
-    <div className="citations">
-      <span className="citations-label">Kaynaklar</span>
-      <div className="citations-row">
+    <div className="cites">
+      <div className="label">Kaynaklar</div>
+      <div className="cites-list">
         {citations.map((c, i) => (
           <CitationBadge key={`${c.doc}-${c.section}-${i}`} citation={c} />
         ))}

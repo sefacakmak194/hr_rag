@@ -2,40 +2,33 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ArchiveItem, ArchiveVerification, IntegrityReport } from '../types';
 
 /**
- * Denetim bütünlüğü paneli (Sprint 3a).
+ * Denetim kaydinin butunlugu.
  *
- * Yalnızca yöneticiye gösterilir; sunucu da öyle zorluyor.
+ * Iki ayri sey gosterilir:
+ *   1. Hash zinciri butun mu (yerel kontrol — satirlar birbirine bagli mi)
+ *   2. Imzali arsiv (disari cikarilabilir kanit — asil koruma bu)
  *
- * Bu panelin işi kullanıcıya iki şeyi aynı anda söylemek: kaydın **şu an**
- * bütün olduğunu, ve bunun **neye kadar** kanıtlanabilir olduğunu. İkincisi
- * gizlenirse panel yanlış bir güven duygusu üretir — arşivi dışarı çıkarmayan
- * bir kurulumda "her şey yolunda" yazısı çok az şey ifade eder.
+ * Ikisini ayirmak onemli: zincirin butun olmasi "kimse dokunmadi" demez,
+ * "dokunulduysa gorunur" der. Arsivi bu makineden CIKARMAK, geriye donuk
+ * degistirmeyi imkansiz kilan tek adimdir.
  */
-
-const fmtBytes = (b: number) => (b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`);
-
-const fmtDateTime = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
-};
-
 export default function IntegrityPanel() {
-  const [report, setReport] = useState<IntegrityReport | null>(null);
+  const [data, setData] = useState<IntegrityReport | null>(null);
   const [archives, setArchives] = useState<ArchiveItem[]>([]);
-  const [verified, setVerified] = useState<ArchiveVerification | null>(null);
+  const [verify, setVerify] = useState<ArchiveVerification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [r, a] = await Promise.all([
+      const [i, a] = await Promise.all([
         fetch('/api/audit/integrity'),
         fetch('/api/audit/archives'),
       ]);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setReport((await r.json()) as IntegrityReport);
-      if (a.ok) setArchives(((await a.json()) as { arsivler: ArchiveItem[] }).arsivler);
+      if (!i.ok) throw new Error(`HTTP ${i.status}`);
+      setData((await i.json()) as IntegrityReport);
+      if (a.ok) setArchives(((await a.json()).arsivler ?? []) as ArchiveItem[]);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -46,14 +39,13 @@ export default function IntegrityPanel() {
     load();
   }, [load]);
 
-  async function archive() {
+  async function createArchive() {
     setBusy(true);
-    setVerified(null);
+    setVerify(null);
     try {
       const res = await fetch('/api/audit/archive', { method: 'POST' });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
-      setError(null);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -61,114 +53,140 @@ export default function IntegrityPanel() {
     setBusy(false);
   }
 
-  async function verify(dosya: string) {
+  async function verifyArchive(file: string) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/audit/archives/${encodeURIComponent(dosya)}`);
+      const res = await fetch(`/api/audit/archives/${encodeURIComponent(file)}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
-      setVerified(body as ArchiveVerification);
+      setVerify(body as ArchiveVerification);
     } catch (e) {
       setError((e as Error).message);
     }
     setBusy(false);
   }
 
-  if (!report) {
-    return <div className="integrity">{error ? <p className="integrity-error">{error}</p> : null}</div>;
+  if (!data) {
+    return (
+      <div className="integrity">
+        <div className="integrity-head" style={{ cursor: 'default' }}>
+          <span className="integrity-dot" />
+          <span className="integrity-title">Bütünlük</span>
+          <span className="integrity-sub">{error ?? 'kontrol ediliyor…'}</span>
+        </div>
+      </div>
+    );
   }
 
+  const ok = data.ok;
+
   return (
-    <div className={`integrity${report.ok ? '' : ' integrity-broken'}`}>
+    <div className={`integrity${ok ? '' : ' integrity--broken'}`}>
       <button type="button" className="integrity-head" onClick={() => setOpen((v) => !v)}>
-        <span className={`integrity-dot${report.ok ? ' integrity-dot-ok' : ' integrity-dot-bad'}`} />
-        <span className="integrity-title">
-          {report.ok ? 'Zincir bütün' : 'ZİNCİR KIRIK'}
-        </span>
+        <span className={`integrity-dot integrity-dot--${ok ? 'ok' : 'bad'}`} />
+        <span className="integrity-title">{ok ? 'Zincir bütün' : 'Zincir kırılmış'}</span>
         <span className="integrity-sub">
-          {report.chained} satır imzalı zincirde
-          {report.preChain > 0 && ` · ${report.preChain} satır zincir öncesi`}
+          {data.chained} satır imzalı zincirde
+          {data.preChain > 0 ? ` · ${data.preChain} satır zincir öncesi` : ''}
+          {data.brokenAt ? ` · ilk kırık satır #${data.brokenAt}` : ''}
         </span>
         <span className="integrity-caret">{open ? '−' : '+'}</span>
       </button>
 
-      {!report.ok && report.reason && <p className="integrity-alarm">{report.reason}</p>}
-
       {open && (
         <div className="integrity-body">
-          {report.preChain > 0 && (
-            <p className="integrity-note">
-              <strong>{report.preChain} satır</strong> hash zinciri eklenmeden önce yazıldı ve
-              doğrulanamıyor. Özetleri geriye dönük hesaplanmadı: zaten değiştirilmiş olabilecek
-              veri üzerinden hash üretmek, doğrulanmamış şeye “doğrulandı” demek olurdu.
-            </p>
-          )}
+          <div>
+            <dl className="integrity-facts">
+              <dt>Zincir başı</dt>
+              <dd>{data.chainHead ?? '—'}</dd>
+              <dt>Açık anahtar</dt>
+              <dd>{data.acikAnahtarParmakIzi ?? '—'}</dd>
+              <dt>Son arşiv</dt>
+              <dd>
+                {data.sonArsiv
+                  ? `${data.sonArsiv.dosya} (${data.sonArsiv.sonSatir}. satıra kadar)`
+                  : 'henüz üretilmedi'}
+              </dd>
+              <dt>Arşiv dizini</dt>
+              <dd>
+                <code>{data.arsivDizini}</code>
+              </dd>
+            </dl>
 
-          <dl className="integrity-facts">
-            <dt>Zincir başı</dt>
-            <dd className="mono">{report.chainHead.slice(0, 24)}…</dd>
-            <dt>Açık anahtar</dt>
-            <dd className="mono">{report.acikAnahtarParmakIzi}</dd>
-            <dt>Son arşiv</dt>
-            <dd>
-              {report.sonArsiv
-                ? `${report.sonArsiv.dosya} (${report.sonArsiv.sonSatir}. satıra kadar)`
-                : 'henüz yok'}
-            </dd>
-          </dl>
+            <div className="integrity-actions">
+              <button type="button" className="btn btn--solid" onClick={createArchive} disabled={busy}>
+                İmzalı arşiv üret
+              </button>
+              <button type="button" className="btn" onClick={load} disabled={busy}>
+                Yeniden denetle
+              </button>
+            </div>
 
-          <div className="integrity-actions">
-            <button onClick={archive} disabled={busy}>
-              {busy ? 'İşleniyor…' : 'İmzalı arşiv üret'}
-            </button>
-            <button onClick={load} disabled={busy}>
-              Yeniden denetle
-            </button>
+            {verify && (
+              <div className={`integrity-verify${verify.ok ? '' : ' integrity-verify--bad'}`}>
+                <strong>{verify.ok ? 'Arşiv geçerli' : 'Arşiv doğrulanamadı'}</strong>
+                <span>
+                  imza {verify.imzaGecerli ? '✓' : '✗'} · zincir {verify.zincirGecerli ? '✓' : '✗'}
+                  {verify.satirSayisi !== undefined ? ` · ${verify.satirSayisi} satır` : ''}
+                  {verify.surumSayisi !== undefined ? ` · ${verify.surumSayisi} sürüm` : ''}
+                </span>
+              </div>
+            )}
+
+            {error && <p className="integrity-error">{error}</p>}
           </div>
 
-          {/* Bu uyari gizlenemez: panelin dogru anlasilmasi buna bagli. */}
-          <p className="integrity-warn">
-            Arşiv üretmek tek başına yetmez — <strong>asıl koruma arşivi bu makineden
-            çıkarmaktır.</strong> Dışarı çıkmış bir arşiv geriye dönük değiştirilemez. Doğrulama
-            da başka bir makinede yapılmalı:
-            <code>npm run verify-archive -- &lt;arşiv.json&gt; &lt;açık-anahtar.pem&gt;</code>
-          </p>
+          <div>
+            {data.preChain > 0 && (
+              <p className="rule-note rule-note--warn">
+                <strong>{data.preChain} satır</strong> hash zinciri eklenmeden önce yazıldı ve
+                doğrulanamıyor. Özetleri geriye dönük hesaplanmadı: zaten değiştirilmiş
+                olabilecek veri üzerinden hash üretmek, doğrulanmamış şeye “doğrulandı” demek
+                olurdu.
+              </p>
+            )}
 
-          {archives.length > 0 && (
-            <ul className="integrity-archives">
-              {archives.map((a) => (
-                <li key={a.dosya}>
-                  <button type="button" onClick={() => verify(a.dosya)} disabled={busy}>
-                    {a.dosya}
-                  </button>
-                  <span>
-                    {fmtDateTime(a.olusturuldu)} · {a.satirSayisi} satır · {fmtBytes(a.bayt)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+            {!ok && (
+              <p className="rule-note rule-note--danger">
+                Zincir kırıldı: bir satır silinmiş ya da değiştirilmiş. Son geçerli imzalı
+                arşivle karşılaştırın.
+              </p>
+            )}
 
-          {verified && (
-            <div className={`integrity-verify${verified.ok ? ' ok' : ' bad'}`}>
-              <strong>{verified.ok ? 'Arşiv geçerli' : 'Arşiv doğrulanamadı'}</strong>
-              <span>
-                imza {verified.imzaGecerli ? '✓' : '✗'} · zincir {verified.zincirGecerli ? '✓' : '✗'} ·{' '}
-                {verified.satirSayisi} satır · {verified.surumSayisi} sürüm
-              </span>
-              {verified.sorunlar.map((s, i) => (
-                <span key={i} className="integrity-issue">
-                  {s}
-                </span>
-              ))}
-            </div>
-          )}
+            <p className="rule-note" style={{ marginTop: 24 }}>
+              Arşiv üretmek tek başına yetmez —{' '}
+              <strong>asıl koruma arşivi bu makineden çıkarmaktır.</strong> Dışarı çıkmış bir
+              arşiv geriye dönük değiştirilemez. Doğrulama da başka bir makinede yapılmalı:
+            </p>
+            <code className="integrity-code code">
+              npm run verify-archive -- &lt;arşiv.json&gt; &lt;açık-anahtar.pem&gt;
+            </code>
 
-          <p className="integrity-path">Arşiv dizini: <code>{report.arsivDizini}</code></p>
+            {archives.length > 0 && (
+              <div style={{ marginTop: 28 }}>
+                <div className="label">Arşivler</div>
+                <ul className="integrity-archives">
+                  {archives.map((a) => (
+                    <li key={a.dosya}>
+                      <button
+                        type="button"
+                        onClick={() => verifyArchive(a.dosya)}
+                        disabled={busy}
+                        title="Bu arşivi doğrula"
+                      >
+                        {a.dosya}
+                      </button>
+                      <span>
+                        {a.satirSayisi} satır · {(a.bayt / 1024).toFixed(0)} KB
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
-
-      {error && <p className="integrity-error">{error}</p>}
     </div>
   );
 }

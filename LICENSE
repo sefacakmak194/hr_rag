@@ -74,11 +74,19 @@ Aşağıdaki üçüncü taraf bileşenler kendi lisanslarına tabidir ve bu belg
 onların koşullarını değiştirmez:
 
   Apache-2.0     @huggingface/transformers, pdfjs-dist, tesseract.js, sharp
+  OFL-1.1        Libre Baskerville, Public Sans, IBM Plex Mono (client/public/fonts)
   MIT            onnxruntime-node, express, react, react-dom, vite
   BSD-2-Clause   mammoth
   MIT/GPL-3.0    jszip (kullanıcı seçimli)
 
 Depoda taşınan veri dosyaları:
+
+  client/public/fonts/*.woff2
+      Libre Baskerville, Public Sans ve IBM Plex Mono — SIL Open Font
+      License 1.1. Google Fonts'tan @import edilmek yerine depoda tutulur:
+      hava boşluklu kurulumda dış istek başarısız olur, ağı olan kurulumda
+      ise her açılışta üçüncü tarafa istek gitmesi "hiçbir veri makineyi
+      terk etmez" iddiasıyla bağdaşmaz.
 
   server/vendor/tessdata/tur.traineddata
       Tesseract OCR Türkçe dil modeli (tesseract-ocr/tessdata_fast),

@@ -3,10 +3,10 @@ import VersionHistory from './VersionHistory';
 import type { CorpusAudit, DocumentInfo, DocumentsResponse, SessionUser } from '../types';
 
 /**
- * Korpus yonetimi paneli.
+ * Korpus yonetimi ekrani.
  *
  * Dosyalar base64 JSON ile gonderilir (sunucuda multipart bagimliligi yok).
- * Her degisiklikten sonra sunucu korpusu bastan indeksler; panel donen
+ * Her degisiklikten sonra sunucu korpusu bastan indeksler; ekran donen
  * uyariyi (esik kalibrasyonu) oldugu gibi gosterir — sessizce gecilmemeli.
  */
 
@@ -43,10 +43,9 @@ export default function DocumentManager({
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn' | 'error'; text: string } | null>(null);
   const [audit, setAudit] = useState<CorpusAudit | null>(null);
-  const [auditOpen, setAuditOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Yuklemeye eslik eden surum ustverisi (Sprint 2).
+  // Yuklemeye eslik eden surum ustverisi.
   //
   // Bos birakilabilir: not istege bagli, tarih bossa yukleme ani kullanilir.
   // Tarih GELECEKTE ise dosya korpusa girmez, yururluk tarihini bekler.
@@ -61,7 +60,7 @@ export default function DocumentManager({
       setData((await res.json()) as DocumentsResponse);
 
       // Korpus sagligi: celiski / tekrar / yapi sorunlari. Gercek arsivlerde
-      // bunlar sessizce yanlis cevap uretir; panelde gorunur olmasi gerekiyor.
+      // bunlar sessizce yanlis cevap uretir; ekranda gorunur olmasi gerekiyor.
       const a = await fetch('/api/corpus/audit');
       if (a.ok) setAudit((await a.json()) as CorpusAudit);
     } catch (e) {
@@ -178,10 +177,6 @@ export default function DocumentManager({
   /**
    * Erisim etiketini degistirir (yalnizca yonetici).
    *
-   * NEDEN ARAYUZDE: uc Sprint 2'den beri vardi ama etiketi degistirmenin tek
-   * yolu API'ydi; panel etiketi GOSTERIYOR, degistiremiyordu. "Kilit kapida"
-   * bu projenin en guclu ozelligi ve gosterilemiyorsa yok sayilir.
-   *
    * Etiket degisikligi indeksi degistirmez ama BM25 havuzunu degistirir;
    * sunucu onbellegi kendisi sifirliyor (bkz. versions.route).
    */
@@ -233,194 +228,239 @@ export default function DocumentManager({
     onChanged?.();
   }
 
+  // Surum gecmisi acikken ekran tamamen ona ayrilir: fark okumak genislik ister.
+  if (historyFor) {
+    return (
+      <VersionHistory
+        doc={historyFor}
+        user={user}
+        accessLabel={data?.documents.find((d) => d.name === historyFor)?.accessLabel ?? 'genel'}
+        onLabelChanged={() => {
+          refresh();
+          onChanged?.();
+        }}
+        onClose={() => setHistoryFor(null)}
+      />
+    );
+  }
+
   return (
-    <section className="docs">
-      <div className="docs-head">
+    <div className="view">
+      <header className="view-head">
         <div>
-          <h2>Korpus</h2>
-          <p>
-            {data ? `${data.documents.length} doküman · ${data.indexedChunks} parça` : 'yükleniyor…'}
-          </p>
+          <div className="eyebrow">02 / Korpus</div>
+          <h2 className="view-title">
+            {data
+              ? `${data.documents.length} doküman · ${data.indexedChunks} parça`
+              : 'yükleniyor…'}
+          </h2>
         </div>
-        <button className="docs-reindex" onClick={reindex} disabled={busy}>
-          Yeniden indeksle
-        </button>
-      </div>
-
-      <div
-        className={`dropzone${dragging ? ' dropzone-active' : ''}${busy ? ' dropzone-busy' : ''}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          upload(e.dataTransfer.files);
-        }}
-        onClick={() => !busy && inputRef.current?.click()}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPT}
-          multiple
-          hidden
-          onChange={(e) => {
-            if (e.target.files) upload(e.target.files);
-            e.target.value = '';
-          }}
-        />
-        {busy ? 'İndeks kuruluyor…' : 'Markdown, Word veya PDF dosyalarını buraya sürükleyin · ya da tıklayın'}
-      </div>
-
-      {/* Sürüm üstverisi. Yükleme öncesinde doldurulur; boş bırakılabilir. */}
-      <div className="docs-meta">
-        <label>
-          <span>Değişiklik notu</span>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="örn. yazım hatası düzeltmesi"
-            disabled={busy}
-          />
-        </label>
-        <label>
-          <span>Yürürlük tarihi</span>
-          <input
-            type="date"
-            value={effectiveFrom}
-            onChange={(e) => setEffectiveFrom(e.target.value)}
-            disabled={busy}
-          />
-        </label>
-        <small>
-          Tarih ileri bir gün ise doküman korpusa <strong>o gün</strong> alınır; o zamana kadar
-          yanıtlar yürürlükteki sürüme dayanmayı sürdürür.
-        </small>
-      </div>
-
-      {notice && <div className={`docs-notice docs-notice-${notice.kind}`}>{notice.text}</div>}
-
-      {data && data.pending.length > 0 && (
-        <div className="docs-pending">
-          <h3>Yürürlüğe girmeyi bekleyen sürümler</h3>
-          <ul>
-            {data.pending.map((p) => (
-              <li key={p.name} className={p.conflict ? 'pending-conflict' : undefined}>
-                <span className="pending-name">{p.name}</span>
-                <span className="pending-date">
-                  s{p.version} · {new Date(p.effectiveFrom).toLocaleDateString('tr-TR')}
-                </span>
-                {p.note && <span className="pending-note">{p.note}</span>}
-                {p.conflict && (
-                  <span className="pending-warn">
-                    çakışma: doküman bu arada değişti, planlanmış sürüm uygulanamaz
-                  </span>
-                )}
-                <button onClick={() => cancelPending(p.name)} disabled={busy} title="İptal et">
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {audit && audit.findings.length > 0 && (
-        <div className="audit">
-          <button
-            type="button"
-            className={`audit-head${audit.summary.yuksek ? ' audit-head-alert' : ''}`}
-            onClick={() => setAuditOpen((v) => !v)}
-          >
-            <span>Korpus sağlığı</span>
-            <span className="audit-counts">
-              {audit.summary.yuksek > 0 && <b className="audit-high">{audit.summary.yuksek} çelişki</b>}
-              {audit.summary.orta > 0 && <b className="audit-mid">{audit.summary.orta} uyarı</b>}
-              {audit.summary.bilgi > 0 && <b className="audit-low">{audit.summary.bilgi} bilgi</b>}
-            </span>
+        <div className="view-actions">
+          <button type="button" className="btn" onClick={reindex} disabled={busy}>
+            Yeniden indeksle
           </button>
-
-          {auditOpen && (
-            <ul className="audit-list">
-              {audit.findings.slice(0, 20).map((f, i) => (
-                <li key={i} className={`audit-item audit-${f.severity}`}>
-                  <p>{f.message}</p>
-                  <ul>
-                    {f.where.map((w, j) => (
-                      <li key={j}>
-                        {w.doc} · {w.section}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-      )}
+      </header>
 
-      <ul className="docs-list">
-        {data?.documents.map((doc) => {
-          const shadowed = data.shadowed.includes(doc.name);
-          return (
-            <li key={doc.name} className={shadowed ? 'doc doc-shadowed' : 'doc'}>
-              <span className={`doc-ext doc-ext-${doc.ext}`}>{doc.ext}</span>
-              <span className="doc-name" title={doc.name}>
-                {doc.name}
-              </span>
-              {doc.version !== null && <span className="doc-version">s{doc.version}</span>}
-              {user.role === 'yonetici' ? (
-                <select
-                  className={`doc-label-select doc-label-${doc.accessLabel}`}
-                  value={doc.accessLabel}
-                  onChange={(e) => changeLabel(doc, e.target.value)}
+      <div className="view-body view-body--flush">
+        <div className="corpus" style={{ overflowY: 'auto' }}>
+          <div className="corpus-main">
+            <div
+              className={`dropzone${dragging ? ' dropzone--active' : ''}${busy ? ' dropzone--busy' : ''}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                upload(e.dataTransfer.files);
+              }}
+              onClick={() => !busy && inputRef.current?.click()}
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                accept={ACCEPT}
+                multiple
+                hidden
+                onChange={(e) => {
+                  if (e.target.files) upload(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              {busy
+                ? 'İndeks kuruluyor…'
+                : 'Markdown, Word veya PDF dosyalarını buraya sürükleyin · ya da tıklayın'}
+            </div>
+
+            {/* Sürüm üstverisi. Yükleme öncesinde doldurulur; boş bırakılabilir. */}
+            <div className="corpus-meta">
+              <label className="field">
+                <span className="label">Değişiklik notu</span>
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="örn. yazım hatası düzeltmesi"
                   disabled={busy}
-                  title="Erişim etiketi — filtre vektör aramasından ÖNCE uygulanır"
-                >
-                  <option value="genel">genel</option>
-                  <option value="ik">ik</option>
-                  <option value="yonetici">yonetici</option>
-                </select>
-              ) : (
-                doc.accessLabel !== 'genel' && (
-                  <span className={`doc-label doc-label-${doc.accessLabel}`}>{doc.accessLabel}</span>
-                )
-              )}
-              <span className="doc-meta">
-                {shadowed ? 'aynı adlı üst biçim tercih edildi' : `${doc.chunks} parça`} · {prettySize(doc.bytes)}
-              </span>
-              <button
-                className="doc-history"
-                onClick={() => setHistoryFor(historyFor === doc.name ? null : doc.name)}
-                title="Sürüm geçmişi"
-              >
-                Geçmiş
-              </button>
-              <button className="doc-remove" onClick={() => remove(doc)} disabled={busy} title="Sil">
-                ×
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                />
+              </label>
+              <label className="field">
+                <span className="label">Yürürlük tarihi</span>
+                <input
+                  type="date"
+                  value={effectiveFrom}
+                  onChange={(e) => setEffectiveFrom(e.target.value)}
+                  disabled={busy}
+                />
+              </label>
+              <small>
+                Tarih ileri bir gün ise doküman korpusa <strong>o gün</strong> alınır; o zamana
+                kadar yanıtlar yürürlükteki sürüme dayanmayı sürdürür.
+              </small>
+            </div>
 
-      {historyFor && (
-        <VersionHistory
-          doc={historyFor}
-          user={user}
-          accessLabel={
-            data?.documents.find((d) => d.name === historyFor)?.accessLabel ?? 'genel'
-          }
-          onLabelChanged={() => {
-            refresh();
-            onChanged?.();
-          }}
-          onClose={() => setHistoryFor(null)}
-        />
-      )}
-    </section>
+            {notice && <p className={`notice notice--${notice.kind}`}>{notice.text}</p>}
+
+            <div className="docs tbl">
+              <div className="tbl-head">
+                <span>Tür</span>
+                <span>Doküman</span>
+                <span>Sürüm</span>
+                <span>Erişim</span>
+                <span>Parça · boyut</span>
+                <span />
+                <span />
+              </div>
+
+              {data?.documents.map((doc) => {
+                const shadowed = data.shadowed.includes(doc.name);
+                return (
+                  <div
+                    key={doc.name}
+                    className={`tbl-row${shadowed ? ' tbl-row--dim' : ''}`}
+                  >
+                    <span className={`doc-ext doc-ext--${doc.ext}`}>{doc.ext}</span>
+                    <span className="doc-name" title={doc.name}>
+                      {doc.name}
+                    </span>
+                    <span className="doc-version">{doc.version !== null ? `s${doc.version}` : '—'}</span>
+
+                    {user.role === 'yonetici' ? (
+                      <select
+                        className={`select${doc.accessLabel !== 'genel' ? ' select--on' : ''}`}
+                        value={doc.accessLabel}
+                        onChange={(e) => changeLabel(doc, e.target.value)}
+                        disabled={busy}
+                        title="Erişim etiketi — filtre vektör aramasından ÖNCE uygulanır"
+                      >
+                        <option value="genel">genel</option>
+                        <option value="ik">ik</option>
+                        <option value="yonetici">yonetici</option>
+                      </select>
+                    ) : (
+                      <span className="doc-label">{doc.accessLabel}</span>
+                    )}
+
+                    <span className="doc-meta">
+                      {shadowed ? 'gölgelendi' : `${doc.chunks} parça`} · {prettySize(doc.bytes)}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="btn btn--quiet btn--sm"
+                      onClick={() => setHistoryFor(doc.name)}
+                      title="Sürüm geçmişi"
+                    >
+                      Geçmiş
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-x"
+                      onClick={() => remove(doc)}
+                      disabled={busy}
+                      title="Sil"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="corpus-side">
+            {data && data.pending.length > 0 && (
+              <div className="side-block">
+                <div className="side-block-head">
+                  <span className="label">Yürürlüğe girmeyi bekleyen sürümler</span>
+                </div>
+                {data.pending.map((p) => (
+                  <div
+                    key={p.name}
+                    className={`pending-item${p.conflict ? ' pending-item--conflict' : ''}`}
+                  >
+                    <div className="pending-top">
+                      <span className="pending-name">{p.name}</span>
+                      <button
+                        type="button"
+                        className="btn-x"
+                        onClick={() => cancelPending(p.name)}
+                        disabled={busy}
+                        title="İptal et"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="pending-meta">
+                      s{p.version} · {new Date(p.effectiveFrom).toLocaleDateString('tr-TR')}
+                      {p.note ? ` · ${p.note}` : ''}
+                    </div>
+                    {p.conflict && (
+                      <div className="pending-warn">
+                        çakışma: doküman bu arada değişti, planlanmış sürüm uygulanamaz
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {audit && audit.findings.length > 0 && (
+              <div className="side-block">
+                <div className="side-block-head">
+                  <span className="label">Korpus sağlığı</span>
+                  <span className="side-block-counts">
+                    {audit.summary.yuksek > 0 && (
+                      <b className="count--high">{audit.summary.yuksek} çelişki</b>
+                    )}
+                    {audit.summary.orta > 0 && (
+                      <b className="count--mid">{audit.summary.orta} uyarı</b>
+                    )}
+                    {audit.summary.bilgi > 0 && (
+                      <b className="count--low">{audit.summary.bilgi} bilgi</b>
+                    )}
+                  </span>
+                </div>
+
+                {audit.findings.slice(0, 20).map((f, i) => (
+                  <div key={i} className={`finding finding--${f.severity}`}>
+                    <p>{f.message}</p>
+                    <ul>
+                      {f.where.map((w, j) => (
+                        <li key={j}>
+                          {w.doc} · {w.section}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

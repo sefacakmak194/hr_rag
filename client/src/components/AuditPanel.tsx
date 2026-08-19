@@ -44,18 +44,15 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
    * Alanlar tirnaklanir ve icerideki tirnak ikilenir; soru metni virgul ya da
    * satir sonu tasiyabilir ve tirnaklanmazsa sutunlar kayar.
    *
-   * BOM (﻿) ekleniyor: Excel BOM'suz UTF-8'i Windows kod sayfasi sanip
-   * Turkce karakterleri bozuk gosteriyor.
+   * BOM ekleniyor: Excel BOM'suz UTF-8'i Windows kod sayfasi sanip Turkce
+   * karakterleri bozuk gosteriyor.
    */
   const exportCsv = () => {
     if (!data) return;
-    const esc = (v: string | number | null) =>
-      `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const esc = (v: string | number | null) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
     const lines = [
-      ['zaman', 'kullanici', 'rol', 'soru', 'alintilar', 'yanitlandi', 'sure_ms']
-        .map(esc)
-        .join(','),
+      ['zaman', 'kullanici', 'rol', 'soru', 'alintilar', 'yanitlandi', 'sure_ms'].map(esc).join(','),
       ...data.rows.map((r) =>
         [
           r.at,
@@ -64,7 +61,9 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
           r.question ?? '',
           // Surum numarasi CSV'ye de girer: disa aktarilan kayit, dokuman
           // sonradan degistiginde de hangi metne dayandigini soylemeli.
-          r.citations.map((c) => `${c.doc} :: ${c.section}${c.version ? ` :: s${c.version}` : ''}`).join(' | '),
+          r.citations
+            .map((c) => `${c.doc} :: ${c.section}${c.version ? ` :: s${c.version}` : ''}`)
+            .join(' | '),
           r.answered ? 'evet' : 'hayir',
           r.durationMs,
         ]
@@ -73,7 +72,7 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
       ),
     ];
 
-    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -83,76 +82,110 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
   };
 
   return (
-    <aside className="audit-panel">
-      <div className="audit-head">
-        <h2>Denetim kaydı</h2>
-        <span className="audit-scope">
-          {data?.scope === 'tumu' ? 'tüm kullanıcılar' : 'yalnızca kendi kayıtlarınız'}
-        </span>
-      </div>
-
-      {/* Butunluk paneli yalnizca yoneticide; sunucu da 403 ile zorluyor. */}
-      {user.role === 'yonetici' && <IntegrityPanel />}
-
-      {data && (
-        <div className="audit-summary">
-          <Stat label="Toplam" value={data.summary.total} />
-          <Stat label="Yanıtsız" value={data.summary.unanswered} tone={data.summary.unanswered > 0 ? 'warn' : undefined} />
-          {user.role === 'yonetici' && <Stat label="Kullanıcı" value={data.summary.users} />}
+    <div className="view">
+      <header className="view-head">
+        <div>
+          <div className="eyebrow">
+            {user.role === 'ik' || user.role === 'yonetici' ? '04 / Denetim' : '02 / Denetim'}
+          </div>
+          <h2 className="view-title">Denetim kaydı</h2>
         </div>
-      )}
 
-      {user.role === 'yonetici' && (
-        <div className="audit-filter">
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Kullanıcı adına göre süz"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') load(filter.trim() || undefined);
-            }}
-          />
-          <button onClick={() => load(filter.trim() || undefined)} disabled={loading}>
-            Ara
+        <div className="view-actions">
+          <span className="audit-scope">
+            {data?.scope === 'tumu' ? 'tüm kullanıcılar' : 'yalnızca kendi kayıtlarınız'}
+          </span>
+          <button
+            type="button"
+            className="btn btn--quiet"
+            onClick={() => load(filter.trim() || undefined)}
+            disabled={loading}
+          >
+            {loading ? 'Yükleniyor…' : 'Yenile'}
+          </button>
+          <button type="button" className="btn" onClick={exportCsv} disabled={!data?.rows.length}>
+            CSV indir
           </button>
         </div>
-      )}
+      </header>
 
-      <div className="audit-actions">
-        <button onClick={() => load(filter.trim() || undefined)} disabled={loading}>
-          {loading ? 'Yükleniyor…' : 'Yenile'}
-        </button>
-        <button onClick={exportCsv} disabled={!data?.rows.length}>
-          CSV indir
-        </button>
+      <div className="view-body">
+        {/* Butunluk paneli yalnizca yoneticide; sunucu da 403 ile zorluyor. */}
+        {user.role === 'yonetici' && <IntegrityPanel />}
+
+        {data && (
+          <div className="stats">
+            <Stat label="Toplam" value={data.summary.total} />
+            <Stat
+              label="Yanıtsız"
+              value={data.summary.unanswered}
+              tone={data.summary.unanswered > 0 ? 'warn' : undefined}
+            />
+            {user.role === 'yonetici' && <Stat label="Kullanıcı" value={data.summary.users} />}
+          </div>
+        )}
+
+        {user.role === 'yonetici' && (
+          <div className="audit-filter">
+            <input
+              className="input"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Kullanıcı adına göre süz"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') load(filter.trim() || undefined);
+              }}
+            />
+            <button
+              type="button"
+              className="btn"
+              onClick={() => load(filter.trim() || undefined)}
+              disabled={loading}
+            >
+              Ara
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <p className="rule-note rule-note--danger" style={{ marginTop: 32 }}>
+            {error}
+          </p>
+        )}
+
+        {data && data.rows.length === 0 && (
+          <p className="audit-empty">Henüz kayıt yok. Bir soru sorulduğunda burada görünecek.</p>
+        )}
+
+        {data && data.rows.length > 0 && (
+          <div className="audit tbl">
+            <div className="tbl-head">
+              <span>Zaman</span>
+              <span>Kullanıcı</span>
+              <span>Rol</span>
+              <span>Soru ve kaynak</span>
+              <span className="tbl-right">Süre</span>
+            </div>
+            {data.rows.map((r) => (
+              <Row key={r.id} row={r} />
+            ))}
+          </div>
+        )}
+
+        <p className="note" style={{ marginTop: 40 }}>
+          Kayıtlar <strong>değiştirilemez ve silinemez</strong>; bu kısıt veritabanı düzeyinde
+          zorlanır. Soru metni yalnızca kısıtlı bir dokümana erişildiğinde saklanır.
+        </p>
       </div>
-
-      {error && <p className="audit-error">{error}</p>}
-
-      {data && data.rows.length === 0 && (
-        <p className="audit-empty">Henüz kayıt yok. Bir soru sorulduğunda burada görünecek.</p>
-      )}
-
-      <ul className="audit-list">
-        {data?.rows.map((r) => (
-          <Row key={r.id} row={r} />
-        ))}
-      </ul>
-
-      <p className="audit-note">
-        Kayıtlar <strong>değiştirilemez ve silinemez</strong>; bu kısıt veritabanı
-        düzeyinde zorlanır. Soru metni yalnızca kısıtlı bir dokümana erişildiğinde
-        saklanır.
-      </p>
-    </aside>
+    </div>
   );
 }
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'warn' }) {
   return (
-    <div className={`audit-stat${tone ? ` audit-stat-${tone}` : ''}`}>
-      <span className="audit-stat-value">{value}</span>
-      <span className="audit-stat-label">{label}</span>
+    <div className={`stat${tone ? ` stat--${tone}` : ''}`}>
+      <div className="stat-value">{value}</div>
+      <div className="label stat-label">{label}</div>
     </div>
   );
 }
@@ -191,7 +224,9 @@ function VersionPeek({ versionId, label }: { versionId: number; label: string })
         {label}
       </button>
       {open && (
-        <pre className="audit-version-text">{error ? `Okunamadı: ${error}` : (text ?? 'yükleniyor…')}</pre>
+        <pre className="code audit-version-text">
+          {error ? `Okunamadı: ${error}` : (text ?? 'yükleniyor…')}
+        </pre>
       )}
     </>
   );
@@ -200,30 +235,34 @@ function VersionPeek({ versionId, label }: { versionId: number; label: string })
 function Row({ row }: { row: AuditRow }) {
   const time = new Date(row.at);
   return (
-    <li className={`audit-row${row.answered ? '' : ' audit-row-unanswered'}`}>
-      <div className="audit-row-top">
-        <span className="audit-time">
-          {time.toLocaleDateString('tr-TR')} {time.toLocaleTimeString('tr-TR')}
-        </span>
-        <span className="audit-user">{row.username}</span>
-        <span className={`user-role user-role-${row.role}`}>{row.role}</span>
-        <span className="audit-duration">{(row.durationMs / 1000).toFixed(1)}s</span>
-      </div>
+    <div className={`audit-row${row.answered ? '' : ' audit-row--unanswered'}`}>
+      <span className="audit-time">
+        {time.toLocaleDateString('tr-TR')}
+        <br />
+        {time.toLocaleTimeString('tr-TR')}
+      </span>
 
-      <div className="audit-row-body">
+      <span className="audit-user">{row.username}</span>
+
+      <span className={`chip${row.role === 'yonetici' ? ' chip--fill-accent' : row.role === 'ik' ? ' chip--accent' : ''}`}>
+        {row.role}
+      </span>
+
+      <div>
         {row.question ? (
           <p className="audit-question">{row.question}</p>
         ) : (
-          <p className="audit-question audit-question-hidden">
+          <p className="audit-question audit-question--hidden">
             soru metni saklanmadı (genel doküman)
           </p>
         )}
 
         {row.citations.length > 0 ? (
-          <ul className="audit-citations">
+          <ul className="audit-cites">
             {row.citations.map((c, i) => (
               <li key={i}>
-                {c.doc} <span className="audit-section">{c.section}</span>
+                <span>{c.doc}</span>
+                <span className="audit-section">{c.section}</span>
                 {c.versionId ? (
                   <VersionPeek versionId={c.versionId} label={`s${c.version ?? '?'}`} />
                 ) : (
@@ -240,6 +279,8 @@ function Row({ row }: { row: AuditRow }) {
           </p>
         )}
       </div>
-    </li>
+
+      <span className="audit-duration">{(row.durationMs / 1000).toFixed(1)}s</span>
+    </div>
   );
 }

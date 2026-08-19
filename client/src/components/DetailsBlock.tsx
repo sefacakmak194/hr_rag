@@ -28,22 +28,20 @@ export default function DetailsBlock({ details }: { details: AnswerDetails }) {
         </span>
       </summary>
 
-      <div className="dayanak-body">
-        <p className="dayanak-text">{primary.text}</p>
+      <p className="dayanak-text">{primary.text}</p>
 
-        {related.length > 0 && (
-          <div className="dayanak-related">
-            <span className="dayanak-related-label">Bağlama giren diğer maddeler</span>
-            <ul>
-              {related.map((r, i) => (
-                <li key={`${r.doc}-${r.section}-${i}`}>
-                  {prettyDoc(r.doc)} · {r.section}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      {related.length > 0 && (
+        <div className="dayanak-related">
+          <div className="label">Bağlama giren diğer maddeler</div>
+          <ul>
+            {related.map((r, i) => (
+              <li key={`${r.doc}-${r.section}-${i}`}>
+                {prettyDoc(r.doc)} · {r.section}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </details>
   );
 }

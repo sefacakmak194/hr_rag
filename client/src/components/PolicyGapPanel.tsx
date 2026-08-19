@@ -2,19 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import type { GapCluster, GapReport } from '../types';
 
 /**
- * Politika boşluğu raporu (Sprint 4).
+ * Politika bosluklari.
  *
- * Şu soruyu cevaplıyor: **çalışanlar neyi soruyor ama mevzuatta karşılığı yok?**
+ * Yanitsiz sorular konu bazinda gruplanir: tek tek sorular gurultudur, ayni
+ * boslugu isaret eden bir yigin ise politika ihtiyacidir.
  *
- * Panelin iki şeyi aynı anda söylemesi gerekiyor: hangi konuların eksik
- * olduğunu, ve bu gruplamanın **ne kadar güvenilir** olduğunu. İkincisi
- * gizlenirse rapor olduğundan kesin görünür — ölçüldü, kümeleme eşiği
- * konuları temiz ayıramıyor (bkz. `constants.ts`).
+ * Gruplama bir YARDIMCIDIR, siniflandirici degil — esik fazla bolme yonunde
+ * secildi; ayni boslugu isaret eden iki konu ayri satirda gorunebilir, bu
+ * yuzden "benzer" baglantisi gosterilir. Ekran bu belirsizligi saklamiyor.
  */
-
-const fmtWeek = (w: string) => w.replace('-W', ' · ') + '. hafta';
-
-export default function PolicyGapPanel() {
+export default function GapClusterPanel() {
   const [data, setData] = useState<GapReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,7 +20,7 @@ export default function PolicyGapPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/reports/policy-gaps');
+      const res = await fetch('/api/policy-gaps');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData((await res.json()) as GapReport);
       setError(null);
@@ -38,23 +35,24 @@ export default function PolicyGapPanel() {
     load();
   }, [load]);
 
-  /** CSV: BOM'lu, alanlar tırnaklı (denetim dışa aktarımıyla aynı kurallar). */
   const exportCsv = () => {
     if (!data) return;
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-
     const lines = [
-      ['konu', 'soru_sayisi', 'en_iyi_skor', 'az_kaldi', 'ilk_hafta', 'son_hafta', 'soru'].map(esc).join(','),
-      ...data.clusters.flatMap((c) =>
-        c.questions.map((q) =>
-          [c.label, c.count, c.bestScore, c.nearMiss ? 'evet' : 'hayir', c.firstWeek, c.lastWeek, q.question]
-            .map(esc)
-            .join(','),
-        ),
+      ['konu', 'soru_sayisi', 'en_yuksek_skor', 'esige_yakin', 'ornek_sorular'].map(esc).join(','),
+      ...data.clusters.map((g) =>
+        [
+          g.label,
+          g.count,
+          g.bestScore.toFixed(3),
+          g.nearMiss ? 'evet' : 'hayir',
+          g.questions.map((q) => q.question).join(' | '),
+        ]
+          .map(esc)
+          .join(','),
       ),
     ];
-
-    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -63,109 +61,120 @@ export default function PolicyGapPanel() {
     URL.revokeObjectURL(url);
   };
 
-  const maxWeek = Math.max(1, ...(data?.byWeek.map((w) => w.count) ?? [1]));
+  const weeks = data?.byWeek ?? [];
+  const max = Math.max(1, ...weeks.map((w) => w.count));
 
   return (
-    <aside className="gaps">
-      <div className="gaps-head">
+    <div className="view">
+      <header className="view-head">
         <div>
-          <h2>Politika boşlukları</h2>
-          <p>
+          <div className="eyebrow">03 / Boşluklar</div>
+          <h2 className="view-title">
             {data
-              ? `${data.totalQuestions} yanıtsız soru · ${data.clusters.length} konu · ${data.weeks} hafta`
-              : 'yükleniyor…'}
+              ? `${data.totalQuestions} yanıtsız soru · ${data.clusters.length} konu · ${weeks.length} hafta`
+              : 'Politika boşlukları'}
+          </h2>
+        </div>
+        <div className="view-actions">
+          <button type="button" className="btn btn--quiet" onClick={load} disabled={loading}>
+            {loading ? 'Yükleniyor…' : 'Yenile'}
+          </button>
+          <button type="button" className="btn" onClick={exportCsv} disabled={!data?.clusters.length}>
+            CSV indir
+          </button>
+        </div>
+      </header>
+
+      <div className="view-body">
+        {error && <p className="rule-note rule-note--danger">{error}</p>}
+
+        {weeks.length > 0 && (
+          <>
+            <div className="trend">
+              {weeks.map((w) => (
+                <div
+                  key={w.week}
+                  className={`trend-bar${w.count === max ? ' trend-bar--max' : ''}`}
+                  title={`${w.week}: ${w.count} yanıtsız soru`}
+                >
+                  <span className="trend-count">{w.count}</span>
+                  <div
+                    className="trend-fill"
+                    style={{ height: `${Math.round((w.count / max) * 100)}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="trend-axis">
+              <span>{weeks[0]?.week}</span>
+              <span>{weeks[weeks.length - 1]?.week}</span>
+            </div>
+          </>
+        )}
+
+        {data && data.clusters.length === 0 && (
+          <p className="gaps-empty">
+            Yanıtsız soru yok. Korpus sorulan sorulara yetiyor.
           </p>
-        </div>
-        <button onClick={load} disabled={loading}>
-          {loading ? '…' : 'Yenile'}
-        </button>
-      </div>
+        )}
 
-      {error && <p className="gaps-error">{error}</p>}
-
-      {data && data.totalQuestions === 0 && (
-        <p className="gaps-empty">
-          Henüz yanıtsız soru yok. Bir soru mevzuatta karşılık bulamadığında burada görünecek.
-        </p>
-      )}
-
-      {data && data.byWeek.length > 1 && (
-        <div className="gaps-trend">
-          <span className="gaps-trend-label">Haftalık</span>
-          <div className="gaps-bars">
-            {data.byWeek.map((w) => (
-              <div key={w.week} className="gaps-bar" title={`${fmtWeek(w.week)}: ${w.count} soru`}>
-                <div className="gaps-bar-fill" style={{ height: `${(w.count / maxWeek) * 100}%` }} />
-                <span>{w.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data && data.clusters.length > 0 && (
-        <>
-          <div className="gaps-actions">
-            <button onClick={exportCsv}>CSV indir</button>
-          </div>
-
-          <ul className="gaps-list">
-            {data.clusters.map((c) => (
-              <Cluster
-                key={c.label}
-                cluster={c}
-                open={open === c.label}
-                onToggle={() => setOpen(open === c.label ? null : c.label)}
+        {data && data.clusters.length > 0 && (
+          <div className="gaps tbl">
+            <div className="tbl-head">
+              <span>Soru</span>
+              <span>Konu</span>
+              <span>Durum</span>
+              <span className="tbl-right">Skor</span>
+            </div>
+            {data.clusters.map((gap) => (
+              <Gap
+                key={gap.label}
+                gap={gap}
+                open={open === gap.label}
+                onToggle={() => setOpen(open === gap.label ? null : gap.label)}
               />
             ))}
-          </ul>
-        </>
-      )}
+          </div>
+        )}
 
-      {/* Bu not gizlenemez: raporun dogru okunmasi buna bagli. */}
-      {data && data.totalQuestions > 0 && (
-        <p className="gaps-note">
+        <p className="note" style={{ marginTop: 48 }}>
           Konu gruplaması bir <strong>yardımcıdır, sınıflandırıcı değil</strong>. Ölçüldü: aynı
           konunun farklı ifadeleri ile farklı konular arasındaki benzerlik dağılımları örtüşüyor.
           Eşik <strong>fazla bölme</strong> yönünde seçildi — aynı boşluğa işaret eden iki konu
           ayrı satırda görünebilir, bu yüzden “benzer” bağlantısı gösteriliyor. Kayıtlar{' '}
-          <strong>kim sorduğu bilgisini taşımaz</strong> ve {data.retentionWeeks} hafta sonra
-          silinir.
+          <strong>kim sorduğu bilgisini taşımaz</strong> ve 52 hafta sonra silinir.
         </p>
-      )}
-    </aside>
+      </div>
+    </div>
   );
 }
 
-function Cluster({
-  cluster,
+function Gap({
+  gap,
   open,
   onToggle,
 }: {
-  cluster: GapCluster;
+  gap: GapCluster;
   open: boolean;
   onToggle: () => void;
 }) {
   return (
-    <li className={`gap${cluster.nearMiss ? ' gap-near' : ''}`}>
+    <div className={`gap${open ? ' gap--open' : ''}`}>
       <button type="button" className="gap-head" onClick={onToggle}>
-        <span className="gap-count">{cluster.count}</span>
-        <span className="gap-label">{cluster.label}</span>
-        {cluster.nearMiss && (
-          <span
-            className="gap-chip"
-            title="Skor eşiğe çok yakın: konu mevzuatta geçiyor olabilir ama yeterince açık yazılmamış."
-          >
-            az kaldı
-          </span>
+        <span className="gap-count">{gap.count}</span>
+        <span className="gap-label">{gap.label}</span>
+        {gap.nearMiss ? (
+          <span className="chip chip--warn">az kaldı</span>
+        ) : (
+          <span />
         )}
-        <span className="gap-score">{cluster.bestScore.toFixed(3)}</span>
+        <span className="gap-score">{gap.bestScore.toFixed(3)}</span>
       </button>
 
       {open && (
         <div className="gap-body">
           <ul className="gap-questions">
-            {cluster.questions.map((q, i) => (
+            {gap.questions.map((q, i) => (
               <li key={i}>
                 <span>{q.question}</span>
                 <em>{q.week}</em>
@@ -173,20 +182,21 @@ function Cluster({
             ))}
           </ul>
 
-          {cluster.relatedTo && (
-            <p className="gap-related">
-              Benzer konu: <strong>{cluster.relatedTo}</strong> — aynı boşluğa işaret ediyor
-              olabilir.
-            </p>
-          )}
-
-          <p className="gap-advice">
-            {cluster.nearMiss
-              ? 'Eşiğe yakın: mevzuat bu konuya değiniyor olabilir ama arama eşiğini geçemiyor. Yeni yönerge yerine mevcut maddeyi netleştirmek yeterli olabilir.'
-              : 'Eşikten uzak: konu mevzuatta gerçekten yok görünüyor. Yeni bir madde gerekebilir.'}
-          </p>
+          <div className="gap-cols">
+            {gap.relatedTo && (
+              <p className="paper-block gap-related">
+                Benzer konu: <strong>{gap.relatedTo}</strong> — aynı boşluğa işaret ediyor olabilir.
+              </p>
+            )}
+            {gap.nearMiss && (
+              <p className="paper-block gap-advice">
+                Eşiğe yakın: mevzuat bu konuya değiniyor olabilir ama arama eşiğini geçemiyor.
+                Yeni yönerge yerine mevcut maddeyi netleştirmek yeterli olabilir.
+              </p>
+            )}
+          </div>
         </div>
       )}
-    </li>
+    </div>
   );
 }

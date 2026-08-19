@@ -26,12 +26,26 @@ function getSessionId(): string {
   return id;
 }
 
+const fmtTime = (d: Date) =>
+  d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
 export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Turlarin saati: mesaj nesnesi sunucudan gelmiyor, ilk gorulduğu an yazilir.
+  const stampRef = useRef<Map<string, string>>(new Map());
+
+  const stamp = (id: string) => {
+    let s = stampRef.current.get(id);
+    if (!s) {
+      s = fmtTime(new Date());
+      stampRef.current.set(id, s);
+    }
+    return s;
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -170,78 +184,111 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
       body: JSON.stringify({ sessionId: getSessionId() }),
     }).catch(() => {});
     sessionStorage.removeItem(SESSION_KEY);
+    stampRef.current.clear();
     setMessages([]);
   }
 
+  const turns = messages.filter((m) => m.role === 'user').length;
+
   return (
-    <div className="chat">
-      {messages.length > 0 && (
-        <div className="chat-toolbar">
-          <button type="button" onClick={resetConversation} disabled={busy}>
-            Yeni sohbet
-          </button>
+    <div className="view">
+      <header className="view-head">
+        <div>
+          <div className="eyebrow">01 / Sohbet</div>
+          <h2 className="view-title">
+            {turns ? `Oturum · ${turns} tur` : 'Şirket içi mevzuata sorun'}
+          </h2>
         </div>
-      )}
-      <div className="messages" ref={scrollRef}>
-        {messages.length === 0 && (
-          <div className="empty">
-            <h2>Şirket içi mevzuata sorun</h2>
-            <p>
-              Yanıtlar yalnızca kurumsal doküman korpusundan üretilir ve kaynak maddesiyle
-              birlikte gösterilir. Hiçbir veri cihazdan çıkmaz.
-            </p>
-            <div className="suggestions">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} type="button" onClick={() => ask(s)}>
-                  {s}
-                </button>
-              ))}
-            </div>
+        {messages.length > 0 && (
+          <div className="view-actions">
+            <button type="button" className="btn" onClick={resetConversation} disabled={busy}>
+              Yeni sohbet
+            </button>
           </div>
         )}
+      </header>
 
-        {messages.map((m) => (
-          <div key={m.id} className={`msg msg-${m.role} ${m.error ? 'msg-error' : ''}`}>
-            <div className="msg-role">{m.role === 'user' ? 'Siz' : 'Asistan'}</div>
-            <div className="msg-body">
-              {m.replaced && (
-                <span className="replaced-note">
-                  Yanıt üretimi başarısız oldu; mevzuat metni birebir gösteriliyor.
-                </span>
-              )}
-              {m.content}
-              {m.streaming && <span className="caret" />}
-              {m.streaming && !m.content && <span className="thinking">yanıt üretiliyor…</span>}
-            </div>
-            {m.role === 'assistant' && !m.streaming && m.basis && <BasisNote basis={m.basis} />}
-            {m.role === 'assistant' && !m.streaming && m.details && (
-              <DetailsBlock details={m.details} />
+      <div className="view-body view-body--flush">
+        <div className="chat">
+          <div className="chat-scroll" ref={scrollRef}>
+            {messages.length === 0 && (
+              <div className="chat-empty">
+                <p>
+                  Yanıtlar yalnızca kurumsal doküman korpusundan üretilir ve kaynak maddesiyle
+                  birlikte gösterilir. Hiçbir veri cihazdan çıkmaz.
+                </p>
+                <div className="suggest">
+                  {SUGGESTIONS.map((s, i) => (
+                    <button key={s} type="button" onClick={() => ask(s)}>
+                      <span className="suggest-no">{String(i + 1).padStart(2, '0')}</span>
+                      <span className="suggest-q">{s}</span>
+                      <span className="suggest-go">→</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {m.role === 'assistant' && !m.streaming && m.citations && (
-              <CitationList citations={m.citations} />
-            )}
+
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`turn turn--${m.role}${m.error ? ' turn--error' : ''}`}
+              >
+                <div className="turn-meta">
+                  {m.role === 'user' ? 'Siz' : 'Asistan'}
+                  <br />
+                  <span className="turn-time">{stamp(m.id)}</span>
+                </div>
+
+                <div className="turn-body">
+                  <div className="turn-text">
+                    {m.replaced && (
+                      <span className="replaced-note">
+                        Yanıt üretimi başarısız oldu; mevzuat metni birebir gösteriliyor.
+                      </span>
+                    )}
+                    {m.streaming && !m.content ? (
+                      <span className="thinking">yanıt üretiliyor…</span>
+                    ) : (
+                      m.content
+                    )}
+                    {m.streaming && m.content && <span className="caret" />}
+                  </div>
+
+                  {m.role === 'assistant' && !m.streaming && m.basis && (
+                    <BasisNote basis={m.basis} />
+                  )}
+                  {m.role === 'assistant' && !m.streaming && m.details && (
+                    <DetailsBlock details={m.details} />
+                  )}
+                  {m.role === 'assistant' && !m.streaming && m.citations && (
+                    <CitationList citations={m.citations} />
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <form
-        className="composer"
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask(input);
-        }}
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Örn: Babalık izni kaç gün?"
-          disabled={busy}
-          autoFocus
-        />
-        <button type="submit" disabled={busy || !input.trim()}>
-          {busy ? '…' : 'Sor'}
-        </button>
-      </form>
+          <form
+            className="composer"
+            onSubmit={(e) => {
+              e.preventDefault();
+              ask(input);
+            }}
+          >
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Örn: Babalık izni kaç gün?"
+              disabled={busy}
+              autoFocus
+            />
+            <button type="submit" className="btn btn--solid" disabled={busy || !input.trim()}>
+              {busy ? '…' : 'Sor'}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
@@ -262,7 +309,7 @@ function BasisNote({ basis }: { basis: AnswerBasis }) {
   });
 
   return (
-    <p className="basis-note" title={`${basis.doc} · sürüm ${basis.version}`}>
+    <p className="basis" title={`${basis.doc} · sürüm ${basis.version}`}>
       Bu yanıt <strong>{date}</strong> tarihinde yürürlüğe giren {basis.version}. sürüme
       dayanmaktadır.
     </p>

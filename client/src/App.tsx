@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import ChatWindow from './components/ChatWindow';
-import StatusIndicator from './components/StatusIndicator';
 import DocumentManager from './components/DocumentManager';
 import AuthGate from './components/AuthGate';
 import AuditPanel from './components/AuditPanel';
 import PolicyGapPanel from './components/PolicyGapPanel';
+import Sidebar, { type ViewKey } from './components/Sidebar';
+import { useTheme } from './theme';
 import type { HealthResponse, SessionUser } from './types';
 
 export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showDocs, setShowDocs] = useState(false);
-  const [showAudit, setShowAudit] = useState(false);
-  const [showGaps, setShowGaps] = useState(false);
+  const [view, setView] = useState<ViewKey>('sohbet');
+  const [theme, setTheme] = useTheme();
 
   const refresh = useCallback(async () => {
     try {
@@ -34,82 +34,52 @@ export default function App() {
 
   return (
     <AuthGate>
-      {(user, onLogout) => (
-    <div className="app">
-      <header>
-        <div className="brand">
-          <h1>Kurumsal İK &amp; Mevzuat Asistanı</h1>
-          <p>%100 yerel · sıfır veri sızıntısı · kaynak gösterimli</p>
-        </div>
-        <div className="header-right">
-          <StatusIndicator health={health} error={error} />
-          {canManage(user) && (
-            <button
-              className={`docs-toggle${showDocs ? ' docs-toggle-on' : ''}`}
-              onClick={() => setShowDocs((v) => !v)}
-              title="Korpus dokümanlarını yönet"
-            >
-              Korpus
-            </button>
-          )}
-          {canManage(user) && (
-            <button
-              className={`docs-toggle${showGaps ? ' docs-toggle-on' : ''}`}
-              onClick={() => setShowGaps((v) => !v)}
-              title="Çalışanların sorduğu ama mevzuatta karşılığı olmayan konular"
-            >
-              Boşluklar
-            </button>
-          )}
-          <button
-            className={`docs-toggle${showAudit ? ' docs-toggle-on' : ''}`}
-            onClick={() => setShowAudit((v) => !v)}
-            title={
-              user.role === 'yonetici'
-                ? 'Tüm kullanıcıların erişim kaydı'
-                : 'Kendi erişim kaydınız'
-            }
-          >
-            Denetim
-          </button>
-          <div className="user-chip" title={`Rol: ${ROLE_LABEL[user.role]}`}>
-            <span className="user-name">{user.username}</span>
-            <span className={`user-role user-role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
-            <button className="logout" onClick={onLogout} title="Oturumu kapat">
-              Çıkış
-            </button>
+      {(user, onLogout) => {
+        const items = views(user);
+        // Rol degisirse (cikis/giris) gecerli olmayan ekranda kalinmasin.
+        const active = items.some((i) => i.key === view) ? view : 'sohbet';
+
+        return (
+          <div className="shell">
+            <Sidebar
+              view={active}
+              onView={setView}
+              items={items}
+              user={user}
+              onLogout={onLogout}
+              health={health}
+              error={error}
+              theme={theme}
+              onTheme={setTheme}
+            />
+
+            {active === 'sohbet' && <ChatWindow onActivity={refresh} />}
+            {active === 'korpus' && <DocumentManager user={user} onChanged={refresh} />}
+            {active === 'bosluklar' && <PolicyGapPanel />}
+            {active === 'denetim' && <AuditPanel user={user} />}
           </div>
-        </div>
-      </header>
-
-      <main className={showDocs || showAudit || showGaps ? 'with-docs' : undefined}>
-        <ChatWindow onActivity={refresh} />
-        {showDocs && canManage(user) && <DocumentManager user={user} onChanged={refresh} />}
-        {showGaps && canManage(user) && <PolicyGapPanel />}
-        {showAudit && <AuditPanel user={user} />}
-      </main>
-
-      <footer>
-        Microsoft Foundry Local · yerel vektör indeksi · KVKK / GDPR uyumlu air-gapped çalışma
-      </footer>
-    </div>
-      )}
+        );
+      }}
     </AuthGate>
   );
 }
 
-const ROLE_LABEL: Record<SessionUser['role'], string> = {
-  calisan: 'Çalışan',
-  ik: 'İK',
-  yonetici: 'Yönetici',
-};
-
 /**
- * Korpus panelini yalnizca yetkili roller gorur.
+ * Gezinme, role gore kisalir.
  *
- * Sunucu zaten 403 donuyor; bu yalnizca kullaniciya calismayacak bir dugme
+ * Sunucu zaten 403 donuyor; bu yalnizca kullaniciya calismayacak bir ekran
  * gostermemek icin. Guvenlik istemciye BIRAKILMIYOR.
  */
-function canManage(user: SessionUser): boolean {
-  return user.role === 'ik' || user.role === 'yonetici';
+function views(user: SessionUser): { key: ViewKey; label: string }[] {
+  const manage = user.role === 'ik' || user.role === 'yonetici';
+  return [
+    { key: 'sohbet', label: 'Sohbet' },
+    ...(manage
+      ? ([
+          { key: 'korpus', label: 'Korpus' },
+          { key: 'bosluklar', label: 'Boşluklar' },
+        ] as const)
+      : []),
+    { key: 'denetim', label: 'Denetim' },
+  ];
 }

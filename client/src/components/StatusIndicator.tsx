@@ -5,51 +5,70 @@ interface Props {
   error: string | null;
 }
 
+/**
+ * Sistem durumu — kenar cubugunun alt bolumunde okunabilir satirlar.
+ *
+ * Rozet yerine etiket/deger cifti: "air-gapped: aktif" bir durum bildirimi
+ * degil, dogrulanabilir bir olcum gibi okunmali.
+ */
 export function StatusIndicator({ health, error }: Props) {
   if (error) {
     return (
-      <div className="status status-down">
-        <span className="dot" />
-        API kapalı — <code>cd server &amp;&amp; npm start</code>
-      </div>
+      <dl className="side-status">
+        <div className="side-row">
+          <dt>api</dt>
+          <dd className="side-row-v side-row-v--down">kapalı</dd>
+        </div>
+        <div className="side-row">
+          <dt>çözüm</dt>
+          <dd className="side-row-v">cd server &amp;&amp; npm start</dd>
+        </div>
+      </dl>
     );
   }
 
   if (!health) {
     return (
-      <div className="status status-pending">
-        <span className="dot" />
-        Durum kontrol ediliyor…
-      </div>
+      <dl className="side-status">
+        <div className="side-row">
+          <dt>durum</dt>
+          <dd className="side-row-v">kontrol ediliyor…</dd>
+        </div>
+      </dl>
     );
   }
 
   const { foundry, index } = health;
   const indexOk = index.indexedChunks > 0;
-  const level = foundry.online && indexOk ? 'ok' : 'warn';
 
   return (
-    <div className={`status status-${level}`}>
-      <span className="dot" />
-      <div className="status-items">
-        <span className="pill pill-locked">Air-gapped</span>
-
-        <span className={`pill ${indexOk ? 'pill-ok' : 'pill-warn'}`}>
-          İndeks: {indexOk ? `${index.indexedChunks} parça` : 'boş — npm run ingest'}
-        </span>
-
-        <span
-          className={`pill ${foundry.online ? 'pill-ok' : 'pill-warn'}`}
-          title={foundry.online ? `${foundry.baseUrl} (${foundry.discovery})` : undefined}
-        >
-          Foundry Local: {foundry.online ? (foundry.activeModel ?? 'bağlı') : 'çevrimdışı'}
-        </span>
-
-        <span className="pill pill-muted" title={health.embeddingModel}>
-          Embedding: yerel
-        </span>
+    <dl className="side-status">
+      <div className="side-row">
+        <dt>air-gapped</dt>
+        <dd className={`side-row-v${health.airGapped ? ' side-row-v--ok' : ' side-row-v--warn'}`}>
+          {health.airGapped ? 'aktif' : 'kapalı'}
+        </dd>
       </div>
-    </div>
+
+      <div className="side-row">
+        <dt>indeks</dt>
+        <dd className={`side-row-v${indexOk ? '' : ' side-row-v--warn'}`}>
+          {indexOk ? `${index.indexedChunks} parça` : 'boş — npm run ingest'}
+        </dd>
+      </div>
+
+      <div className="side-row" title={foundry.online ? `${foundry.baseUrl} (${foundry.discovery})` : undefined}>
+        <dt>foundry</dt>
+        <dd className={`side-row-v${foundry.online ? ' side-row-v--ok' : ' side-row-v--warn'}`}>
+          {foundry.online ? (foundry.activeModel ?? 'bağlı') : 'çevrimdışı'}
+        </dd>
+      </div>
+
+      <div className="side-row" title={health.embeddingModel}>
+        <dt>embedding</dt>
+        <dd className="side-row-v">yerel</dd>
+      </div>
+    </dl>
   );
 }
 

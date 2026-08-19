@@ -5,9 +5,9 @@ import type { AuthStatus, SessionUser } from '../types';
  * Giris kapisi.
  *
  * Uc durum var ve sirasi onemli:
- *   1) hic hesap yok      -> ilk kurulum (tek seferlik yonetici)
+ *   1) hic hesap yok        -> ilk kurulum (tek seferlik yonetici)
  *   2) hesap var, giris yok -> giris formu
- *   3) giris yapilmis     -> uygulama
+ *   3) giris yapilmis       -> uygulama
  *
  * Durum sunucudan sorulur (`/api/auth/status`), istemcide tahmin edilmez:
  * kurulumun tamamlanip tamamlanmadigini yalnizca sunucu bilir.
@@ -69,87 +69,115 @@ export default function AuthGate({
     await refresh();
   };
 
-  if (!status) {
-    return (
-      <div className="auth-screen">
-        <div className="auth-card">
-          <p className="auth-loading">{error ?? 'Yükleniyor…'}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status.authenticated && status.user) {
+  if (status?.authenticated && status.user) {
     return <>{children(status.user, logout)}</>;
   }
 
-  const setup = status.needsSetup;
+  const setup = status?.needsSetup ?? false;
 
   return (
-    <div className="auth-screen">
-      <form
-        className="auth-card"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!busy) submit(setup ? '/api/auth/setup' : '/api/auth/login');
-        }}
-      >
-        <h1>Kurumsal İK &amp; Mevzuat Asistanı</h1>
+    <div className="auth">
+      <div className="auth-aside">
+        <div>
+          <div className="eyebrow">Kurumsal</div>
+          <h1>
+            İK &amp; Mevzuat
+            <br />
+            Asistanı
+          </h1>
+        </div>
 
-        {setup ? (
-          <p className="auth-lead">
-            İlk kurulum. Bu ekran yalnızca <strong>bir kez</strong> görünür ve
-            yönetici hesabını oluşturur. Sonraki hesaplar yönetici panelinden eklenir.
-          </p>
+        <dl className="auth-facts">
+          <div className="auth-fact">
+            <dt>yerel</dt>
+            <dd>%100</dd>
+          </div>
+          <div className="auth-fact">
+            <dt>veri sızıntısı</dt>
+            <dd>sıfır</dd>
+          </div>
+          <div className="auth-fact">
+            <dt>kaynak gösterimi</dt>
+            <dd>madde düzeyi</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="auth-main">
+        {!status ? (
+          <p className="auth-loading">{error ?? 'Yükleniyor…'}</p>
         ) : (
-          <p className="auth-lead">Devam etmek için giriş yapın.</p>
+          <form
+            className="auth-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!busy) submit(setup ? '/api/auth/setup' : '/api/auth/login');
+            }}
+          >
+            <div className="label">{setup ? 'İlk kurulum' : 'Giriş'}</div>
+
+            {setup ? (
+              <h2>
+                Bu ekran yalnızca <strong>bir kez</strong> görünür ve yönetici hesabını
+                oluşturur.
+              </h2>
+            ) : (
+              <h2>Devam etmek için giriş yapın.</h2>
+            )}
+
+            {setup && (
+              <p className="auth-hint">
+                Sonraki hesaplar yönetici panelinden eklenir.
+              </p>
+            )}
+
+            <label className="field">
+              <span className="label">Kullanıcı adı</span>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoFocus
+                required
+              />
+            </label>
+
+            {setup && (
+              <label className="field">
+                <span className="label">Görünen ad</span>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Ad Soyad"
+                />
+              </label>
+            )}
+
+            <label className="field">
+              <span className="label">Parola</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={setup ? 'new-password' : 'current-password'}
+                required
+              />
+            </label>
+
+            {setup && <p className="auth-hint">Parola en az 8 karakter olmalıdır.</p>}
+
+            {error && <p className="rule-note rule-note--danger">{error}</p>}
+
+            <button type="submit" className="btn btn--solid" disabled={busy}>
+              {busy ? 'Gönderiliyor…' : setup ? 'Yönetici hesabını oluştur' : 'Giriş yap'}
+            </button>
+
+            <p className="auth-foot">
+              Kimlik doğrulaması bu makinede yapılır. Parolanız hiçbir yere gönderilmez.
+            </p>
+          </form>
         )}
-
-        <label>
-          Kullanıcı adı
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            autoFocus
-            required
-          />
-        </label>
-
-        {setup && (
-          <label>
-            Görünen ad
-            <input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Ad Soyad"
-            />
-          </label>
-        )}
-
-        <label>
-          Parola
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={setup ? 'new-password' : 'current-password'}
-            required
-          />
-        </label>
-
-        {setup && <p className="auth-hint">Parola en az 8 karakter olmalıdır.</p>}
-
-        {error && <p className="auth-error">{error}</p>}
-
-        <button type="submit" disabled={busy}>
-          {busy ? 'Gönderiliyor…' : setup ? 'Yönetici hesabını oluştur' : 'Giriş yap'}
-        </button>
-
-        <p className="auth-foot">
-          Kimlik doğrulaması bu makinede yapılır. Parolanız hiçbir yere gönderilmez.
-        </p>
-      </form>
+      </div>
     </div>
   );
 }

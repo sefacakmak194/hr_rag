@@ -160,6 +160,7 @@ bir hesap kullanılır (bkz. `scripts/eval-auth.ts`, `scripts/eval-sandbox.ts`).
 | `test:versions` | 61 test — sürüm açılma kuralı, yürürlük tarihi, arşiv, fark hesabı |
 | `test:endpoints` | 46 test — **HTTP ucu** düzeyinde erişim kontrolü (gerçek Express) |
 | `test:integrity` | 48 test — hash zinciri, imzalı arşiv, kurcalama tespiti |
+| `test:gap` | 25 test — politika boşluğu: kimliksizlik, kümeleme, saklama |
 | `test:evidence` | 18 test — cümle/yan cümle bölme, canlı korpus üzerinde kanıt seçimi |
 | `test:documents` | 21 test — dosya adı doğrulaması (dizin geçişi, uzantı kaçışı) |
 | `test:formats` | DOCX okuma, biçim önceliği, taranmış PDF + OCR |
@@ -844,6 +845,74 @@ olurdu.
 
 ---
 
+## Politika boşluğu raporu
+
+Denetim kaydının cevapladığı soru "kim neye erişti" ise, bu raporunki şudur:
+**çalışanlar neyi soruyor ama mevzuatta karşılığı yok?**
+
+İK için bu, asistanın kendisinden değerli olabilir — hangi yönergeyi yazmaları
+gerektiğini tahminle değil veriyle söyler.
+
+### Sprint 1 ile çakışma ve çözümü
+
+Bu özellik "denetim kaydındaki `answered=0` satırlarından rapor üret" diye
+planlanmıştı. Kodlarken çıktı ki **bu mümkün değil**: Sprint 1 kararı gereği
+soru metni yalnızca *kısıtlı* bir dokümana erişildiğinde saklanıyor. Alaka
+kapısına takılan soruda hiçbir dokümana erişilmez, dolayısıyla metin `NULL`
+kalır. Ölçüldü: 20 yanıtsız satırın 20'sinde de soru metni yok.
+
+Sprint 1 kararı yanlış değil — her soruyu kullanıcının adına yazmak, çalışanın
+ne merak ettiğini kalıcı kayda geçirir ve sisteme soru sormaktan çekindirir.
+
+**Çözüm:** ayrı bir tablo — soru metni saklanır, **kim sorduğu saklanmaz.**
+Korunması gereken şey metnin kendisi değil, *metin ile kişi arasındaki bağdı*:
+
+- `user_id` / `username` **yok**
+- zaman damgası **hafta** çözünürlüğünde (tam saat saklansaydı denetim
+  kaydındaki `answered=0` satırıyla saniye saniye eşleştirilebilirdi)
+
+Artık risk: düşük hacimli bir kurulumda, bir hafta içinde tek bir yanıtsız soru
+varsa eşleştirme yine mümkün. Bu gizlenmiyor; kurum hacmi büyüdükçe kayboluyor.
+
+Bu tablo, denetim kaydının aksine **silinebilir** — serbest metin taşır ve
+içine kişisel ayrıntı girebilir. Varsayılan saklama süresi 52 hafta.
+
+### Kümeleme bir yardımcıdır, sınıflandırıcı değil
+
+Sorular yerel embedding ile konu kümelerine ayrılır — vektör zaten arama için
+hesaplandığından maliyeti yok ve LLM'e hiç gidilmez (rapor deterministik).
+
+Eşik ölçüldü (`npm run calibrate:gap`, 16 aynı-konu / 89 farklı-konu çifti):
+
+```
+AYNI konu    min 0.7892  medyan 0.8638  maks 0.9128
+FARKLI konu  min 0.7631  medyan 0.8177  maks 0.8767
+ayırım boşluğu: -0.0875   ← NEGATIF, dağılımlar ÖRTÜŞÜYOR
+```
+
+Yani tek bir eşik konuları temiz ayıramıyor — bu projede `RELEVANCE_MARGIN`'in
+çöküşüyle aynı sınıf bir sonuç. Seçilen 0.86, ölçülen en iyi denge: 16 aynı-konu
+çiftinin 10'u birleşiyor, 89 farklı-konu çiftinin yalnızca 1'i yanlış birleşiyor.
+
+**Taraf tutma yönü bilinçli:** fazla bölmek, yanlış birleştirmekten iyidir.
+Fazla bölünmüş rapor listeyi uzatır; yanlış birleştirilmiş rapor iki ayrı
+boşluğu tek boşluk gibi gösterir ve İK'yı yanıltır. Telafi olarak her kümeye en
+benzer diğer küme (`relatedTo`) eklenir.
+
+### "Az kaldı" ayrımı
+
+Eşiğe çok yaklaşan sorular ayrı işaretlenir: konu mevzuatta **geçiyor** ama
+yeterince açık yazılmamış demektir — yeni yönerge değil, mevcut maddeyi
+netleştirme işi.
+
+Bu tabanın da ölçülmesi gerekti. İlk halinde eşikten sabit bir bant (0.02)
+çıkarılmıştı; kalibrasyon ise kapsam dışı sorguların **0.8230'a kadar**
+çıkabildiğini söylüyor. Sonuç: apaçık alakasız sorular da "az kaldı" alıyordu
+(ölçüldü: "Ofise evcil hayvan getirebilir miyim?" 0.814 ile işaretlendi).
+Doğru taban, kalibrasyonda ölçülen kapsam-dışı maksimumudur.
+
+---
+
 ## Model karşılaştırması
 
 `npm run compare`, **aynı** değerlendirme vakalarını birden çok Foundry Local modeliyle
@@ -975,14 +1044,16 @@ private-hr-rag/
 │   │   │   ├── corpusSync.service.ts    # indeks kilidi + yürürlüğe alma
 │   │   │   ├── diff.service.ts          # satır düzeyinde sürüm farkı
 │   │   │   ├── integrity.service.ts     # hash zinciri + imzalı arşiv
+│   │   │   ├── policyGap.service.ts     # yanıtsız soru kümeleme + rapor
 │   │   │   └── foundryClient.service.ts # SSE + sağlık kontrolü
-│   │   ├── routes/{chat,documents,versions,integrity,auth}.route.ts
+│   │   ├── routes/{chat,documents,versions,integrity,reports,auth}.route.ts
 │   │   └── index.ts
 │   └── package.json
 ├── client/
 │   ├── src/
 │   │   ├── components/{ChatWindow,CitationBadge,StatusIndicator,DocumentManager}.tsx
-│   │   ├── components/{AuthGate,AuditPanel,VersionHistory,IntegrityPanel,DetailsBlock}.tsx
+│   │   ├── components/{AuthGate,AuditPanel,VersionHistory,IntegrityPanel}.tsx
+│   │   ├── components/{PolicyGapPanel,DetailsBlock,CitationBadge}.tsx
 │   │   ├── App.tsx · main.tsx · styles.css · types.ts
 │   └── vite.config.ts
 ├── scripts/
@@ -996,6 +1067,7 @@ private-hr-rag/
 │   ├── test-rag.ts · test-policy.ts · test-evidence.ts · test-pdf.ts
 │   ├── test-identity.ts · test-access.ts · test-versions.ts · test-endpoints.ts
 │   ├── test-integrity.ts · verify-archive.ts   # bağımsız arşiv doğrulayıcı
+│   ├── test-gap.ts · calibrate-gap.ts          # kümeleme eşiği kalibrasyonu
 │   ├── md-to-pdf.mjs · build-exe.mjs
 └── README.md
 ```
@@ -1026,6 +1098,7 @@ private-hr-rag/
 | `/api/audit/archive` | POST | İmzalı arşiv üret (yalnızca yönetici) |
 | `/api/audit/archives` | GET | Arşiv listesi (yalnızca yönetici) |
 | `/api/audit/archives/:dosya` | GET | Bir arşivi yerinde doğrula (yalnızca yönetici) |
+| `/api/reports/policy-gaps` | GET | Politika boşluğu raporu (İK + yönetici) |
 
 Erişimi olmayan bir dokümana yapılan istek **404** alır, 403 değil: dokümanın
 var olduğu bilgisi bile sızmamalı.

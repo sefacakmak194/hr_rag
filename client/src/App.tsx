@@ -4,6 +4,7 @@ import StatusIndicator from './components/StatusIndicator';
 import DocumentManager from './components/DocumentManager';
 import AuthGate from './components/AuthGate';
 import AuditPanel from './components/AuditPanel';
+import PolicyGapPanel from './components/PolicyGapPanel';
 import type { HealthResponse, SessionUser } from './types';
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showDocs, setShowDocs] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  const [showGaps, setShowGaps] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -50,6 +52,15 @@ export default function App() {
               Korpus
             </button>
           )}
+          {canManage(user) && (
+            <button
+              className={`docs-toggle${showGaps ? ' docs-toggle-on' : ''}`}
+              onClick={() => setShowGaps((v) => !v)}
+              title="Çalışanların sorduğu ama mevzuatta karşılığı olmayan konular"
+            >
+              Boşluklar
+            </button>
+          )}
           <button
             className={`docs-toggle${showAudit ? ' docs-toggle-on' : ''}`}
             onClick={() => setShowAudit((v) => !v)}
@@ -71,9 +82,10 @@ export default function App() {
         </div>
       </header>
 
-      <main className={showDocs || showAudit ? 'with-docs' : undefined}>
+      <main className={showDocs || showAudit || showGaps ? 'with-docs' : undefined}>
         <ChatWindow onActivity={refresh} />
         {showDocs && canManage(user) && <DocumentManager user={user} onChanged={refresh} />}
+        {showGaps && canManage(user) && <PolicyGapPanel />}
         {showAudit && <AuditPanel user={user} />}
       </main>
 

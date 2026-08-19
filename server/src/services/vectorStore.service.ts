@@ -14,6 +14,7 @@ import { cosineSimilarity } from './embedding.service.js';
 import { Bm25Index } from './lexical.service.js';
 import { ensureIdentitySchema, labelFilter, type Principal, type Role } from './identity.service.js';
 import { ensureVersionSchema } from './versioning.service.js';
+import { ensureGapSchema } from './policyGap.service.js';
 
 export interface ChunkRecord {
   docTitle: string;
@@ -69,6 +70,9 @@ export function getDb(): DatabaseSync {
     // Politika surumleri (Sprint 2). `documents` tablosuna baglidir, o yuzden
     // kimlik semasindan SONRA kurulur.
     ensureVersionSchema(db);
+
+    // Yanitlanamayan sorular (Sprint 4). Kimlik tasimaz; bkz. policyGap.service.
+    ensureGapSchema(db);
   }
   return db;
 }

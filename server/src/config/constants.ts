@@ -227,6 +227,68 @@ export const RELEVANCE_MARGIN = Number(process.env.RELEVANCE_MARGIN ?? 0);
  */
 export const LEXICAL_WEIGHT = Number(process.env.LEXICAL_WEIGHT ?? 0.05);
 
+/**
+ * Politika boslugu raporu (Sprint 4).
+ *
+ * GAP_CLUSTER_THRESHOLD — iki yanitsiz soru ayni konuya mi ait?
+ *
+ * DIKKAT — BU BIR SINIFLANDIRICI DEGIL, GRUPLAMA YARDIMCISI.
+ *
+ * `scripts/calibrate-gap.ts` ile olculdu (16 ayni-konu, 89 farkli-konu cifti):
+ *
+ *   AYNI konu    min 0.7892  medyan 0.8638  maks 0.9128
+ *   FARKLI konu  min 0.7631  medyan 0.8177  maks 0.8767
+ *   ayirim bosluğu: -0.0875  (NEGATIF — dagilimlar ORTUSUYOR)
+ *
+ * Yani tek bir esik bu iki kumeyi temiz ayiramiyor. E5, Turkce sorulari dar bir
+ * banda sikistiriyor ve "kres destegi" ile "servis guzergahi" arasindaki
+ * benzerlik, "kres destegi" ile "cocuk bakim yardimi" arasindakinden yuksek
+ * olabiliyor. Bu, bu projede RELEVANCE_MARGIN'in cokusuyle ayni sinif bir sonuc.
+ *
+ * SECIM: 0.86 — olculen en iyi denge. 16 ayni-konu ciftinin 10'u birlesiyor,
+ * 89 farkli-konu ciftinin yalnizca 1'i yanlis birlesiyor.
+ *
+ * TARAF TUTMA YONU BILINCLI: fazla bolmek, yanlis birlestirmekten IYIDIR.
+ * Fazla bolunmus rapor listeyi uzatir; yanlis birlestirilmis rapor iki ayri
+ * boslugu tek bosluk gibi gosterir ve İK'yi yaniltir. Bu yuzden yanlis
+ * birlesme kalibrasyonda 3 kat agirlikla cezalandirildi.
+ *
+ * Fazla bolunmenin telafisi: rapor her kumeye EN BENZER diger kumeyi de
+ * ekliyor ("benzer konu"), boylece okuyan kisi ayrilmis olanlari gorebiliyor.
+ */
+export const GAP_CLUSTER_THRESHOLD = Number(process.env.GAP_CLUSTER_THRESHOLD ?? 0.86);
+
+/** Iki kume "benzer" sayilmak icin merkezleri bu kadar yakin olmali. */
+export const GAP_RELATED_THRESHOLD = Number(process.env.GAP_RELATED_THRESHOLD ?? 0.83);
+
+/**
+ * "AZ KALDI" tabani — yanitsiz bir soru esige gercekten YAKLASTI mi?
+ *
+ * Bu deger tahminle SECILEMEZ ve ilk denemede yanlis secildi: esikten sabit bir
+ * bant (0.02) cikarilmisti, tabani 0.812 yapiyordu. Ama yukaridaki kalibrasyon
+ * KAPSAM DISI sorgularin 0.8230'a kadar cikabildigini soyluyor — yani apacik
+ * alakasiz sorular da "az kaldi" isaretini aliyordu ve isaret anlamsizlasiyordu.
+ * Olculdu: "Ofise evcil hayvan getirebilir miyim?" 0.814 ile isaretlenmisti.
+ *
+ * DOGRU TANIM: "bilinen HICBIR kapsam disi sorgunun ulasamadigi kadar yuksek,
+ * ama esigi gecemeyecek kadar dusuk". Yani taban = kalibrasyonda olculen
+ * kapsam-disi MAKSIMUMU (0.8230). Bu bant dar (0.832'ye kadar 0.009) ve oyle
+ * olmali: gercekten "az kalan" sorular azdir.
+ *
+ * Korpus degisip esik yeniden kalibre edilirse BU DA guncellenmeli.
+ */
+export const GAP_NEAR_MISS_FLOOR = Number(process.env.GAP_NEAR_MISS_FLOOR ?? 0.823);
+
+/**
+ * Yanitsiz soru kayitlarinin saklama suresi (hafta). 0 = sinirsiz.
+ *
+ * DENETIM KAYDININ AKSINE bu tablo silinebilir. Denetim kaydinin degeri tam da
+ * degistirilemez olmasinda; burada saklanan ise serbest metin ve icine kisisel
+ * ayrinti girebilir ("3 cocugum var, kres destegi..."). Bir yil, egilim gormeye
+ * yeter.
+ */
+export const GAP_RETENTION_WEEKS = Number(process.env.GAP_RETENTION_WEEKS ?? 52);
+
 /** Kapi acildiktan sonra en iyi skora bu bant icinde kalan parcalar baglama girer. */
 export const CONTEXT_BAND = Number(process.env.CONTEXT_BAND ?? 0.05);
 

@@ -1052,3 +1052,171 @@ main.with-docs .chat { flex: 1 1 60%; min-width: 0; }
 .integrity-path { margin: 0; font-size: 10.5px; color: var(--muted); overflow-wrap: anywhere; }
 .integrity-path code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .integrity-error { margin: 0; padding: 8px 11px; color: var(--danger); font-size: 11.5px; }
+
+/* ---------- Sprint 4: politika boşlukları ---------- */
+
+.gaps {
+  width: 380px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  overflow-y: auto;
+}
+
+.gaps-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.gaps-head h2 { margin: 0; font-size: 14px; }
+.gaps-head p { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
+.gaps-head button {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.gaps-head button:hover { border-color: var(--accent); }
+.gaps-head button:disabled { opacity: 0.5; cursor: default; }
+
+.gaps-error { margin: 0; color: var(--danger); font-size: 12px; }
+.gaps-empty { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+/* ---- haftalık eğilim ---- */
+.gaps-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.gaps-trend-label { font-size: 10.5px; color: var(--muted); flex: none; align-self: center; }
+.gaps-bars { display: flex; align-items: flex-end; gap: 4px; height: 46px; flex: 1; overflow-x: auto; }
+.gaps-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+  min-width: 14px;
+  height: 100%;
+  flex: 1;
+}
+.gaps-bar-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+  opacity: 0.75;
+}
+.gaps-bar span { font-size: 9.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.gaps-actions { display: flex; gap: 8px; }
+.gaps-actions button {
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.gaps-actions button:hover { border-color: var(--accent); }
+
+/* ---- konu listesi ---- */
+.gaps-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.gap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.gap-near { border-color: rgba(240, 180, 41, 0.35); }
+
+.gap-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.gap-count {
+  flex: none;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.gap-label { flex: 1; line-height: 1.4; }
+.gap-chip {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 180, 41, 0.45);
+  color: var(--warn);
+  font-size: 9.5px;
+}
+.gap-score {
+  flex: none;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gap-body {
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 9px;
+}
+.gap-questions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.gap-questions li { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; line-height: 1.5; }
+.gap-questions em { flex: none; color: var(--muted); font-style: normal; font-size: 10px; font-variant-numeric: tabular-nums; }
+
+.gap-related,
+.gap-advice {
+  margin: 0;
+  padding: 7px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.gap-related { background: rgba(76, 141, 255, 0.08); }
+.gap-related strong { color: var(--text); }
+.gap-advice { background: var(--panel); }
+
+.gaps-note {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.gaps-note strong { color: var(--text); }

@@ -230,3 +230,27 @@ export interface ArchiveVerification {
   anahtarEslesti?: boolean;
   sorunlar: string[];
 }
+
+/** Politika boslugu raporu (Sprint 4). */
+export interface GapCluster {
+  label: string;
+  count: number;
+  questions: { question: string; week: string; topScore: number }[];
+  bestScore: number;
+  /** Skor alaka esigine cok yakin: konu mevzuatta olabilir ama net degil. */
+  nearMiss: boolean;
+  firstWeek: string;
+  lastWeek: string;
+  /** En benzer diger kume — fazla bolme yonunde taraf tutuldugu icin gerekli. */
+  relatedTo?: string;
+}
+
+export interface GapReport {
+  currentWeek: string;
+  totalQuestions: number;
+  weeks: number;
+  clusters: GapCluster[];
+  byWeek: { week: string; count: number }[];
+  threshold: number;
+  retentionWeeks: number;
+}

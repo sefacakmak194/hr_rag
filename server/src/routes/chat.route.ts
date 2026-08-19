@@ -1,9 +1,10 @@
 import { Router, type Request, type Response } from 'express';
 import { generateQueryEmbedding } from '../services/embedding.service.js';
-import { queryTopKChunks, findSectionText, getDb } from '../services/vectorStore.service.js';
+import { retrieveWithDiagnostics, findSectionText, getDb } from '../services/vectorStore.service.js';
 import { requireAuth } from '../middleware/session.js';
 import { recordAudit, type AuditCitation } from '../services/audit.service.js';
 import { currentVersionsFor } from '../services/versioning.service.js';
+import { recordGap } from '../services/policyGap.service.js';
 import type { Principal } from '../services/identity.service.js';
 import { classifyIntent } from '../services/intent.service.js';
 import { calculatePolicyAnswer } from '../services/policyCalculator.service.js';
@@ -235,7 +236,16 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     const queryVector = await generateQueryEmbedding(searchQuery);
 
     // 2. Yerel veritabanindan Top-K parcalari getir (hibrit: vektor + BM25)
-    const retrieved = queryTopKChunks(queryVector, principal, TOP_K, SIMILARITY_THRESHOLD, searchQuery);
+    //
+    // Tanilar da aliniyor: kapiya takilan sorularda "en iyi skor kacti" bilgisi
+    // politika boslugu raporunun ayirt edici olcusu (bkz. policyGap.service).
+    const { chunks: retrieved, diagnostics } = retrieveWithDiagnostics(
+      queryVector,
+      principal,
+      TOP_K,
+      SIMILARITY_THRESHOLD,
+      searchQuery,
+    );
 
     // 2a. Kutupluluga gore yeniden sirala (alaka kapisindan SONRA, hicbir parca
     // elenmeden). "ucretli" sorgusu "ucretsiz" maddesini one cikariyordu;
@@ -284,9 +294,22 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
         citations: [],
       });
       // answered = false: soru alaka kapisina takildi, mevzuattan yanit
-      // uretilmedi. Bu satirlar haftalik "politika bosluğu" raporunun
-      // kaynagi olacak (Sprint 4).
+      // uretilmedi.
       audit([], false, query !== message ? query : undefined);
+
+      // POLITIKA BOSLUGU (Sprint 4) — AYRI TABLOYA, KIMLIKSIZ.
+      //
+      // Denetim satiri soru METNINI tasimaz: Sprint 1 karari geregi metin
+      // yalnizca kisitli dokumana erisildiginde saklanir ve burada hicbir
+      // dokumana erisilmedi. Rapor icin metin gerekli, ama KIM SORDUGU degil —
+      // korunmasi gereken sey metin ile kisi arasindaki bagdi. Bkz.
+      // policyGap.service dosya basi.
+      recordGap(getDb(), {
+        question: message,
+        resolved: query !== message ? query : undefined,
+        vector: queryVector,
+        topScore: diagnostics.top,
+      });
       return res.end();
     }
 

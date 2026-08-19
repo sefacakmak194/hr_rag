@@ -5,11 +5,13 @@ import chatRoute from './routes/chat.route.js';
 import documentsRoute from './routes/documents.route.js';
 import versionsRoute from './routes/versions.route.js';
 import integrityRoute from './routes/integrity.route.js';
+import reportsRoute from './routes/reports.route.js';
 import authRoute from './routes/auth.route.js';
 import { promoteDueVersions } from './services/corpusSync.service.js';
+import { purgeOldGaps } from './services/policyGap.service.js';
 import { attachPrincipal } from './middleware/session.js';
 import { checkFoundryHealth } from './services/foundryClient.service.js';
-import { countChunks, listDocuments, SYSTEM_PRINCIPAL } from './services/vectorStore.service.js';
+import { countChunks, listDocuments, getDb, SYSTEM_PRINCIPAL } from './services/vectorStore.service.js';
 import { warmupEmbeddingModel } from './services/embedding.service.js';
 import {
   SERVER_PORT,
@@ -77,6 +79,7 @@ app.use('/api', chatRoute);
 app.use('/api', documentsRoute);
 app.use('/api', versionsRoute);
 app.use('/api', integrityRoute);
+app.use('/api', reportsRoute);
 
 // Paketlenmis modda arayuz de bu sunucudan servis edilir (ayri Vite gerekmez).
 if (HAS_STATIC_UI) {
@@ -132,6 +135,17 @@ app.listen(SERVER_PORT, () => {
 
   promote();
   setInterval(promote, 3600_000).unref();
+
+  // Saklama suresi dolmus yanitsiz soru kayitlarini sil (Sprint 4).
+  //
+  // Denetim kaydinin AKSINE bu tablo silinebilir: serbest metin tasir ve icine
+  // kisisel ayrinti girebilir. Bkz. policyGap.service dosya basi.
+  try {
+    const purged = purgeOldGaps(getDb());
+    if (purged) console.log(`  Bosluk kaydi temizligi →  ${purged} eski kayit silindi`);
+  } catch (error) {
+    console.warn('  Bosluk kaydi temizlenemedi:', (error as Error).message);
+  }
 
   // Ilk sorgunun gecikmesini dusurmek icin embedding modelini isit.
   warmupEmbeddingModel()

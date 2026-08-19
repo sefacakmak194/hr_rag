@@ -125,6 +125,7 @@ const authRoute = (await import('../server/src/routes/auth.route.js')).default;
 const documentsRoute = (await import('../server/src/routes/documents.route.js')).default;
 const versionsRoute = (await import('../server/src/routes/versions.route.js')).default;
 const integrityRoute = (await import('../server/src/routes/integrity.route.js')).default;
+const reportsRoute = (await import('../server/src/routes/reports.route.js')).default;
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -133,6 +134,7 @@ app.use('/api', authRoute);
 app.use('/api', documentsRoute);
 app.use('/api', versionsRoute);
 app.use('/api', integrityRoute);
+app.use('/api', reportsRoute);
 
 const server = app.listen(0);
 await new Promise<void>((r) => server.once('listening', () => r()));
@@ -345,6 +347,26 @@ check(gecis.status === 400 || gecis.status === 404, `dizin gecisi reddediliyor (
 
 const yokArsiv = await req('GET', '/api/audit/archives/olmayan.json', asYonetici);
 check(yokArsiv.status === 404, `olmayan arsiv 404 (${yokArsiv.status})`);
+
+// ========================================================= 7) bosluk raporu
+console.log('\n  Politika boslugu raporu (Sprint 4)\n');
+
+const raporCalisan = await req('GET', '/api/reports/policy-gaps', asCalisan);
+check(
+  raporCalisan.status === 403,
+  `calisan bosluk raporunu goremiyor (${raporCalisan.status})`,
+  'raporda meslektaslarinin sorulari var (kimliksiz de olsa)',
+);
+check((await req('GET', '/api/reports/policy-gaps')).status === 401, 'girissiz istek 401');
+
+const raporIk = await req('GET', '/api/reports/policy-gaps', asIk);
+check(raporIk.status === 200, `ik raporu alabiliyor (${raporIk.status})`);
+check(raporIk.body.totalQuestions === 0, 'bos veritabaninda sifir yanitsiz soru');
+check(Array.isArray(raporIk.body.clusters), 'kume dizisi donuyor');
+check(typeof raporIk.body.currentWeek === 'string', 'gecerli hafta bildiriliyor');
+
+const raporYonetici = await req('GET', '/api/reports/policy-gaps', asYonetici);
+check(raporYonetici.status === 200, `yonetici raporu alabiliyor (${raporYonetici.status})`);
 
 // ---------------------------------------------------------------- sonuc
 server.close();

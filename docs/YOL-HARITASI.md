@@ -6,7 +6,7 @@
 > bulabildiğim şey koda bırakılmış üç yorum satırıydı. Kırılgan — bu yüzden plan
 > buraya yazıldı ve her sprint sonunda güncelleniyor.
 
-Son güncelleme: **19.08.2026**, Sprint 3a kapanışı.
+Son güncelleme: **19.08.2026**, Sprint 4 kapanışı.
 
 ---
 
@@ -19,10 +19,10 @@ Son güncelleme: **19.08.2026**, Sprint 3a kapanışı.
 | 2 | Politika sürümleme | ✅ tamamlandı — [tasarım](SPRINT-2-TASARIM.md) |
 | 3a | Denetim bütünlüğü (zincir + imzalı arşiv) | ✅ tamamlandı |
 | 3b | `.exe` kod imzalama | ⛔ sertifika bekliyor |
-| 4 | Politika boşluğu raporu | ⏳ |
+| 4 | Politika boşluğu raporu | ✅ tamamlandı |
 | 5 | Sunum ve teslim | ⏳ |
 
-Doğrulama durumu: 13 test paketi · **CI yeşil** · eval **47/48**.
+Doğrulama durumu: 14 test paketi · **CI yeşil** · eval **47/48**.
 
 ---
 
@@ -128,19 +128,39 @@ Doğrulanamayan şeye doğrulandı dememek gerekir.
 
 ---
 
-## Sprint 4 — Politika boşluğu raporu ⏳
+## Sprint 4 — Politika boşluğu raporu ✅
 
-Denetim kaydındaki `answered = 0` satırları şu soruyu cevaplıyor: **çalışanlar
-neyi soruyor ama mevzuatta karşılığı yok?**
+**Çalışanlar neyi soruyor ama mevzuatta karşılığı yok?** Rapor konu kümeleri,
+haftalık eğilim, "az kaldı" ayrımı ve CSV dışa aktarım veriyor.
 
-İK için bu, asistanın kendisinden daha değerli olabilir — hangi yönergeyi yazmaları
-gerektiğini tahminle değil veriyle söyler. Altyapısı Sprint 1'de kuruldu
-(`chat.route.ts`, alaka kapısına takılan sorular `answered=0` ile yazılıyor).
+### Planlanan yol tıkalıydı
 
-Kapsam:
-- Cevaplanamayan soruların konu bazında kümelenmesi
-- Haftalık özet + CSV
-- Bekleyen sürüm bildirimi (yürürlük tarihi geldiğinde kimseye haber verilmiyor)
+Sprint 4 "denetim kaydındaki `answered=0` satırlarından rapor üret" diye
+planlanmıştı. **Bu mümkün değildi:** Sprint 1 kararı gereği soru metni yalnızca
+kısıtlı bir dokümana erişildiğinde saklanıyor, alaka kapısına takılan soruda ise
+hiçbir dokümana erişilmiyor. Ölçüldü: 20 yanıtsız satırın 20'sinde metin yok.
+
+Çözüm, Sprint 1 kararını **bozmadan** yeni bir tablo: metin saklanır, kim
+sorduğu saklanmaz. Korunan şey metnin kendisi değil, metin ile kişi arasındaki
+bağdı. Zaman damgası hafta çözünürlüğünde — tam saat, denetim kaydındaki
+`answered=0` satırıyla eşleştirmeye izin verirdi.
+
+### İki eşik de ölçüldü, ikisi de ilk tahminde yanlıştı
+
+| Eşik | İlk tahmin | Ölçüm sonrası | Neden |
+|---|---|---|---|
+| Kümeleme | 0.92 | **0.86** | 0.92'de her soru kendi kümesinde kaldı |
+| "Az kaldı" tabanı | 0.812 | **0.823** | kapsam dışı sorgular 0.8230'a çıkabiliyor |
+
+Kümeleme kalibrasyonu (`npm run calibrate:gap`) aynı-konu ve farklı-konu
+benzerlik dağılımlarının **örtüştüğünü** gösterdi (ayırım boşluğu −0.0875).
+Bu bir sınıflandırıcı değil, gruplama yardımcısı; eşik **fazla bölme** yönünde
+seçildi ve telafi olarak her kümeye en benzer diğer küme ekleniyor.
+
+### Kalan
+
+- Bekleyen sürüm bildirimi: yürürlük tarihi geldiğinde indeks güncelleniyor ama
+  kimseye haber verilmiyor.
 
 ---
 
@@ -191,3 +211,5 @@ Bu projede sezgiyle alınmış karar yok denecek kadar az; çoğunun arkasında 
 | Ayrıntının modelden değil koddan gelmesi | `constants.ts`, 2. kural notu |
 | Rol başına BM25 indeksi | `vectorStore.service.ts` |
 | Karşılaştırmanın yürürlükteki sürümle yapılması | `versioning.service.ts` |
+| Kümeleme eşiği 0.86 ve "az kaldı" tabanı 0.823 | `constants.ts` + `scripts/calibrate-gap.ts` |
+| Zincir özetine satır kimliğinin girmemesi | `integrity.service.ts` |

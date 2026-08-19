@@ -162,14 +162,26 @@ export interface AskResult {
  * ortaya cikardi; izolasyon hem dogru test hijyeni hem de o hatanin regresyon
  * korumasi icin gerekli.
  */
-export async function ask(base: string, message: string, sessionId: string): Promise<AskResult> {
+export async function ask(
+  base: string,
+  message: string,
+  sessionId: string,
+  /**
+   * Oturum cerezi. Sprint 1'den beri `/api/chat` kimlik istiyor; cerez
+   * verilmezse her vaka HTTP 401 alir (bkz. eval-auth.ts).
+   */
+  cookie?: string,
+): Promise<AskResult> {
   const t0 = Date.now();
   try {
   // Zaman asimi: 7B CPU varyantinda tek yanit 60 sn'yi bulabiliyor. Sinirsiz
   // birakilirsa bozuk bir model karsilastirmayi sonsuza kadar bloke eder.
   const res = await fetch(`${base}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(cookie ? { Cookie: cookie } : {}),
+    },
     body: JSON.stringify({ message, sessionId }),
     signal: AbortSignal.timeout(Number(process.env.EVAL_TIMEOUT_MS ?? 180_000)),
   });
@@ -230,11 +242,11 @@ export interface CaseResult {
   why: string[];
 }
 
-export async function runCase(base: string, c: EvalCase): Promise<CaseResult> {
+export async function runCase(base: string, c: EvalCase, cookie?: string): Promise<CaseResult> {
   const sessionId = `eval-${c.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  for (const warmup of c.context ?? []) await ask(base, warmup, sessionId);
+  for (const warmup of c.context ?? []) await ask(base, warmup, sessionId, cookie);
 
-  const r = await ask(base, c.question, sessionId);
+  const r = await ask(base, c.question, sessionId, cookie);
 
   const a = norm(r.answer);
   const missing = c.must.filter((m) => !a.includes(norm(m)));

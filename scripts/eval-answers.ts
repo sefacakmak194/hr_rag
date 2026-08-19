@@ -18,6 +18,7 @@
  *   EVAL_GROUP=Ayrım npm run eval             # tek grup
  */
 import { cases, runCase } from './eval-cases.js';
+import { openEvalSession } from './eval-auth.js';
 
 const BASE = process.argv[2] ?? 'http://localhost:5273';
 
@@ -26,6 +27,11 @@ const selected = onlyGroup ? cases.filter((c) => c.group === onlyGroup) : cases;
 
 console.log(`\n  Cevap kalitesi degerlendirmesi — ${selected.length} vaka`);
 console.log(`  Hedef: ${BASE}\n`);
+
+// Kimlik ONCE alinir: aksi halde tum vakalar 401 yer ve cikti "cevap kalitesi
+// kotu" gibi gorunur. Bkz. eval-auth.ts.
+const session = await openEvalSession(BASE);
+process.on('exit', () => session.close());
 
 let pass = 0;
 let fail = 0;
@@ -40,7 +46,7 @@ for (const c of selected) {
     lastGroup = c.group;
   }
 
-  const r = await runCase(BASE, c);
+  const r = await runCase(BASE, c, session.cookie);
   durations.push(r.seconds);
 
   if (r.ok) pass++;

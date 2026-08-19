@@ -26,6 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cases, runCase, isLlmCase, type EvalCase } from './eval-cases.js';
+import { openEvalSession } from './eval-auth.js';
 
 const execFileAsync = promisify(execFile);
 const FOUNDRY_BIN = process.platform === 'win32' ? 'foundry.exe' : 'foundry';
@@ -170,6 +171,16 @@ if (process.env.COMPARE_FRESH !== '1' && fs.existsSync(CHECKPOINT)) {
   }
 }
 
+/**
+ * Oturum TEK KEZ acilir ve tum modeller icin kullanilir.
+ *
+ * Oturum veritabaninda durdugu icin her model degisiminde sunucu yeniden
+ * baslatilsa da gecerli kalir. Cerezsiz kosum her vakaya HTTP 401 verir ve
+ * karsilastirma "tum modeller basarisiz" der (bkz. eval-auth.ts).
+ */
+const session = await openEvalSession(null);
+process.on('exit', () => session.close());
+
 /** Sonucu listeye ekler ve ANINDA diske yazar. */
 function record(r: ModelResult): void {
   results.push(r);
@@ -235,10 +246,10 @@ for (const model of models) {
   const base = `http://localhost:${port}`;
 
   // Isinma: ilk istek model yuklemesini tetikler, olcume katilmaz.
-  await runCase(base, selected.find(isLlmCase) ?? selected[0]);
+  await runCase(base, selected.find(isLlmCase) ?? selected[0], session.cookie);
 
   for (const c of selected) {
-    const res = await runCase(base, c);
+    const res = await runCase(base, c, session.cookie);
     r.durations.push(res.seconds);
     r.perCase.push({ id: c.id, ok: res.ok, seconds: res.seconds });
     if (res.ok) {

@@ -144,6 +144,15 @@ kuantize sürüme geçmek yeniden kalibrasyon gerektirir.
 Klasörü olduğu gibi kopyalayın; Node.js kurulu olmayan makinede de çalışır
 (Foundry Local yine gerekir).
 
+**`.exe` imzasızdır — bilinçli bir karar.** İlk açılışta Windows SmartScreen
+uyarısı gösterir: *Daha fazla bilgi → Yine de çalıştır*. Kod imzalama kapsam
+dışı bırakıldı çünkü SmartScreen imzaya değil **itibara** bakıyor: sıradan (OV)
+bir sertifikayla imzalanmış yeni bir paket de aynı uyarıyı verir. Uyarıyı
+gerçekten kaldıran EV sertifika, haftalar süren tüzel kişilik doğrulaması
+istiyor ve kazancı iki tıklık bir farktan ibaret. Paket gerçekten dağıtıma
+girerse karar yeniden değerlendirilmeli — kurumsal beyaz liste politikaları
+imzasız çalıştırılabilir dosyayı doğrudan engelleyebilir.
+
 ### Pakete giden veritabanı temizlenir
 
 `data/vectors.db` yalnızca vektör indeksi değil: Sprint 1'den beri kullanıcı

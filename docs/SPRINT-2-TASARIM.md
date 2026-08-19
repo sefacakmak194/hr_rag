@@ -272,3 +272,4 @@ vakası.
 - **Bekleyen sürüm bildirimi**: yürürlük tarihi geldiğinde kimseye haber
   verilmiyor, yalnızca indeks güncelleniyor. Bildirim Sprint 4 kapsamında.
 - **Kod imzalama sertifikası**: Sprint 0'dan beri açık, Sprint 3'ü bloke ediyor.
+  *(19.08.2026 notu: kapsam dışı bırakıldı — bkz. YOL-HARITASI, Sprint 3(c).)*

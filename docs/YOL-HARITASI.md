@@ -18,10 +18,10 @@ Son güncelleme: **19.08.2026**, paket temizliği ve ifade dayanıklılığı.
 | 1 | Kimlik ve iz | ✅ tamamlandı — [tasarım](SPRINT-1-TASARIM.md) |
 | 2 | Politika sürümleme | ✅ tamamlandı — [tasarım](SPRINT-2-TASARIM.md) |
 | 3a | Denetim bütünlüğü (zincir + imzalı arşiv) | ✅ tamamlandı |
-| 3b | `.exe` kod imzalama | ⛔ sertifika bekliyor |
+| 3b | `.exe` kod imzalama | ⬜ **kapsam dışı bırakıldı** (19.08.2026) |
 | 4 | Politika boşluğu raporu | ✅ tamamlandı |
 | 4.5 | Paketleme + ifade dayanıklılığı | ✅ tamamlandı (planlanmamıştı) |
-| 5 | Sunum ve teslim | 🔶 belge hazır — [teslim](SPRINT-5-TESLIM.md); video ve sertifika kaldı |
+| 5 | Sunum ve teslim | 🔶 belge hazır — [teslim](SPRINT-5-TESLIM.md); kurulum videosu kaldı |
 
 Doğrulama durumu: 15 test paketi · **CI yeşil** · eval **51/52 (%98.1)**.
 
@@ -34,8 +34,8 @@ Git deposu, GitHub Actions üzerinde çevrimdışı test hattı, tescilli lisans
 Kritik ayrıntı: `.gitattributes` içinde `*.traineddata binary`. Bu satır olmasa
 CRLF dönüşümü OCR dil verisini sessizce bozar ve Linux'ta OCR çöker.
 
-**Açık kalan:** kod imzalama sertifikası başvurusu. Sprint 3'ün son adımını
-bekletiyor (aşağıya bakınız).
+**Açık kalan:** yok. Kod imzalama sertifikası bir süre Sprint 3'ün son adımını
+bekletti; 19.08.2026'da kapsam dışı bırakıldı (aşağıya bakınız).
 
 ---
 
@@ -120,10 +120,25 @@ kaynaktan esbuild ile üretilmiş tek dosyalık `dogrula.mjs` taşıyor: yalnız
 `node:*` modüllerine bağlı, boş bir Node kurulumunda çalışıyor. Mantık
 kopyalanmadı, taşınabilir hale getirildi.
 
-**(c) `.exe` kod imzalama — ⛔ SERTİFİKA BEKLİYOR**
-- Kullanıcı tek dosyayı çalıştırırken SmartScreen uyarısı almasın
-- Ticari kod imzalama sertifikası gerekiyor; başvuru haftalar sürer
-- Sprint 3'ün diğer iki yarısı bunu beklemedi ve **tamamlandı**
+**(c) `.exe` kod imzalama — ⬜ KAPSAM DIŞI BIRAKILDI (19.08.2026)**
+
+Amaç, kullanıcının tek dosyayı çalıştırırken SmartScreen uyarısı almamasıydı.
+Karar: **yapılmayacak.** Gerekçe, maliyet değil oran:
+
+- Haziran 2023'ten beri özel anahtar donanımda durmak zorunda; iş bir dosya
+  indirmek değil, tüzel kişilik doğrulaması + token/HSM süreci — haftalar.
+- **OV sertifika uyarıyı kaldırmıyor.** SmartScreen imzaya değil *itibara*
+  bakıyor; yeni bir OV sertifikayla imzalanmış paket de uyarı verir. Uyarıyı
+  gerçekten kaldıran seçenek pratikte EV ve o daha pahalı, daha uzun.
+- Kazanım, değerlendirici için iki tıklık bir farktan ibaret
+  (*Daha fazla bilgi → Yine de çalıştır*).
+
+**Ne zaman geri gelir:** paket gerçekten dağıtılmaya başlandığında. Kurumsal
+ortamlarda mesele yalnızca SmartScreen değil — uygulama beyaz liste
+politikaları imzasız çalıştırılabilir dosyayı doğrudan engelleyebilir. Yani
+bu, "hiç gerekmez" değil, "**bu teslim için gerekmez**" kararıdır.
+
+Sprint 3'ün diğer iki yarısı bunu zaten beklemedi ve tamamlandı.
 
 ### Sonuç
 
@@ -254,7 +269,6 @@ teslim kontrol listesi.
 ### Kalan
 
 - Kurulum videosu
-- `.exe` kod imzalama (Sprint 3b — sertifika bekliyor)
 
 ---
 

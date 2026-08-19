@@ -260,8 +260,14 @@ yeniden başlatmanız gerekmiyor (port her başlatmada değişir).
 > soru metinleri silinir; yalnızca korpus, hazır vektör indeksi ve sürüm
 > üstverisi kalır.
 
-> **SmartScreen uyarısı:** `.exe` imzasız. Ticari kod imzalama sertifikası
-> başvurusu sürüyor (Sprint 3b). *Daha fazla bilgi → Yine de çalıştır.*
+> **SmartScreen uyarısı:** `.exe` bilerek **imzasız**. İlk açılışta Windows bir
+> uyarı gösterir: *Daha fazla bilgi → Yine de çalıştır.*
+>
+> Kod imzalama kapsam dışı bırakıldı. Sebep maliyet değil oran: SmartScreen
+> imzaya değil **itibara** bakar, yani sıradan (OV) bir sertifikayla imzalanmış
+> yeni bir paket de aynı uyarıyı verir. Uyarıyı gerçekten kaldıran EV sertifika
+> haftalar süren bir tüzel kişilik doğrulaması gerektiriyor ve kazancı,
+> değerlendirici için iki tıklık bir farktan ibaret.
 
 ### B) Geliştirici için
 
@@ -287,7 +293,7 @@ Bunları saklamak, projenin kendi ilkesine aykırı olurdu.
 
 | Konu | Durum |
 |---|---|
-| `.exe` kod imzalama | sertifika bekliyor — SmartScreen uyarısı çıkar |
+| `.exe` kod imzalama | **kapsam dışı bırakıldı** — SmartScreen uyarısı çıkar; dağıtıma geçilirse gerekir |
 | Zincir öncesi denetim satırları | geriye dönük hash **üretilmedi**; panelde işaretli |
 | Son arşivden sonraki satırların silinmesi | tespit edilemez; çözümü sık arşivleme |
 | Özel imza anahtarı | veritabanıyla aynı makinede (`AUDIT_KEY_PATH` ile taşınabilir) |
@@ -307,7 +313,7 @@ Bunları saklamak, projenin kendi ilkesine aykırı olurdu.
 - [x] İmzalı denetim arşivi üretildi ve makine dışına çıkarıldı
 - [x] Bağımsız doğrulayıcı izole klasörde sınandı (geçerli 0 / kurcalanmış 1)
 - [x] Yol haritası ve tasarım belgeleri depoda
-- [ ] `.exe` kod imzalama sertifikası — **bekliyor**
+- [x] `.exe` kod imzalama — bilinçli olarak **kapsam dışı**
 - [x] LICENSE — Sefa Çakmak ve İlayda Adaklı müşterek hak sahibi
 - [ ] Kurulum videosu
 

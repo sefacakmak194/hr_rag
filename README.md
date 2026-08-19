@@ -5,6 +5,10 @@ yerel RAG asistanı. **20 doküman / 94 bölüm** ile 8 İK alanını kapsar: ç
 izinler, ücret ve yan haklar, istihdam süreci, performans, disiplin, İSG ve uyum (KVKK).
 Kapsamın tam dökümü: [data/KAPSAM.md](data/KAPSAM.md).
 
+> **Projeyi hızlı değerlendirmek için:** [docs/SPRINT-5-TESLIM.md](docs/SPRINT-5-TESLIM.md)
+> — 6 istasyonluk demo akışı, derlenmiş ölçümler ve kurulum. Bu README mühendislik
+> ayrıntısı içindir.
+
 Hiçbir metin, embedding veya sorgu dış bulut API'larına gönderilmez. Tüm doküman işleme,
 embedding üretimi, benzerlik araması ve model çıkarımı host makinede gerçekleşir.
 

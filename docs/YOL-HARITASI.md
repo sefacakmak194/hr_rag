@@ -21,7 +21,7 @@ Son güncelleme: **19.08.2026**, paket temizliği ve ifade dayanıklılığı.
 | 3b | `.exe` kod imzalama | ⛔ sertifika bekliyor |
 | 4 | Politika boşluğu raporu | ✅ tamamlandı |
 | 4.5 | Paketleme + ifade dayanıklılığı | ✅ tamamlandı (planlanmamıştı) |
-| 5 | Sunum ve teslim | ⏳ |
+| 5 | Sunum ve teslim | 🔶 belge hazır — [teslim](SPRINT-5-TESLIM.md); video ve sertifika kaldı |
 
 Doğrulama durumu: 15 test paketi · **CI yeşil** · eval **51/52 (%98.1)**.
 
@@ -232,10 +232,30 @@ Eval 47/50 → **51/52**. İki vaka artık 0.0 s (modele hiç gitmiyor).
 
 ---
 
-## Sprint 5 — Sunum ve teslim ⏳
+## Sprint 5 — Sunum ve teslim 🔶
 
-Microsoft AI Innovators Program teslimi: demo akışı, ölçüm tablolarının
-derlenmesi, kurulum videosu/belgesi, `.exe` paketinin imzalı sürümü.
+Microsoft AI Innovators Program teslimi. Teslim belgesi yazıldı:
+**[SPRINT-5-TESLIM.md](SPRINT-5-TESLIM.md)** — 6 istasyonluk demo akışı,
+derlenmiş ölçüm tabloları, üç kurulum yolu, bilerek açıkta bırakılanlar ve
+teslim kontrol listesi.
+
+### Yazarken çıkanlar
+
+- **Erişim etiketi arayüzden değiştirilemiyordu.** Panel etiketi *gösteriyor*
+  ama değiştirmenin tek yolu API'ydi. "Kilit kapıda" bu projenin en güçlü
+  özelliği ve gösterilemiyorsa yok sayılır — yöneticiye açılır liste eklendi.
+  (Sprint 1→2'deki "etiket şeması var ama atayacak yol yok" durumunun aynısı,
+  bu kez arayüz katmanında.)
+- **Demo günü riski ölçüldü.** Uzun süre açık kalmış Foundry daemon'u *Ready*
+  diyor ama bağlantıyı yanıt ortasında kesiyor. Aynı gün: 7,5 saatlik daemon
+  ile **19/52**, yeniden başlatınca **51/52**. Teslim belgesine uyarı olarak
+  yazıldı.
+
+### Kalan
+
+- Kurulum videosu
+- `.exe` kod imzalama (Sprint 3b — sertifika bekliyor)
+- LICENSE telif sahibi adının doğrulanması
 
 ---
 

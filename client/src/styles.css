@@ -780,6 +780,24 @@ main.with-docs .chat { flex: 1 1 60%; min-width: 0; }
 }
 .doc-label-ik { color: var(--warn); border-color: rgba(240, 180, 41, 0.4); }
 .doc-label-yonetici { color: var(--danger); border-color: rgba(255, 107, 107, 0.4); }
+
+/* Yonetici icin etiket bir rozet degil, bir DENETIM. Rozetle ayni dili
+   konusur (ayni yuvarlaklik, ayni renk kodu) ama tiklanabilir oldugu
+   bellidir. */
+.doc-label-select {
+  flex: none;
+  padding: 1px 4px 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.doc-label-select:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.doc-label-select:disabled { opacity: 0.5; cursor: default; }
+.doc-label-select option { background: var(--panel); color: var(--text); }
 .doc-history {
   flex: none;
   padding: 3px 8px;

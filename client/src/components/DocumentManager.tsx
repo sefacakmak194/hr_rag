@@ -175,6 +175,45 @@ export default function DocumentManager({
     onChanged?.();
   }
 
+  /**
+   * Erisim etiketini degistirir (yalnizca yonetici).
+   *
+   * NEDEN ARAYUZDE: uc Sprint 2'den beri vardi ama etiketi degistirmenin tek
+   * yolu API'ydi; panel etiketi GOSTERIYOR, degistiremiyordu. "Kilit kapida"
+   * bu projenin en guclu ozelligi ve gosterilemiyorsa yok sayilir.
+   *
+   * Etiket degisikligi indeksi degistirmez ama BM25 havuzunu degistirir;
+   * sunucu onbellegi kendisi sifirliyor (bkz. versions.route).
+   */
+  async function changeLabel(doc: DocumentInfo, label: string) {
+    if (busy || label === doc.accessLabel) return;
+
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(doc.name)}/label`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      setNotice({
+        kind: 'ok',
+        text:
+          label === 'genel'
+            ? `${doc.name} artık tüm rollere açık.`
+            : `${doc.name} yalnızca "${label}" ve üstü rollere görünür. ` +
+              `Filtre aramadan ÖNCE uygulanır: yetkisiz rol için bu doküman hiç okunmaz.`,
+      });
+    } catch (e) {
+      setNotice({ kind: 'error', text: (e as Error).message });
+    }
+    setBusy(false);
+    await refresh();
+    onChanged?.();
+  }
+
   async function reindex() {
     if (busy) return;
     setBusy(true);
@@ -333,8 +372,22 @@ export default function DocumentManager({
                 {doc.name}
               </span>
               {doc.version !== null && <span className="doc-version">s{doc.version}</span>}
-              {doc.accessLabel !== 'genel' && (
-                <span className={`doc-label doc-label-${doc.accessLabel}`}>{doc.accessLabel}</span>
+              {user.role === 'yonetici' ? (
+                <select
+                  className={`doc-label-select doc-label-${doc.accessLabel}`}
+                  value={doc.accessLabel}
+                  onChange={(e) => changeLabel(doc, e.target.value)}
+                  disabled={busy}
+                  title="Erişim etiketi — filtre vektör aramasından ÖNCE uygulanır"
+                >
+                  <option value="genel">genel</option>
+                  <option value="ik">ik</option>
+                  <option value="yonetici">yonetici</option>
+                </select>
+              ) : (
+                doc.accessLabel !== 'genel' && (
+                  <span className={`doc-label doc-label-${doc.accessLabel}`}>{doc.accessLabel}</span>
+                )
               )}
               <span className="doc-meta">
                 {shadowed ? 'aynı adlı üst biçim tercih edildi' : `${doc.chunks} parça`} · {prettySize(doc.bytes)}

@@ -308,7 +308,7 @@ Bunları saklamak, projenin kendi ilkesine aykırı olurdu.
 - [x] Bağımsız doğrulayıcı izole klasörde sınandı (geçerli 0 / kurcalanmış 1)
 - [x] Yol haritası ve tasarım belgeleri depoda
 - [ ] `.exe` kod imzalama sertifikası — **bekliyor**
-- [ ] LICENSE telif sahibi adı doğrulanmadı
+- [x] LICENSE — Sefa Çakmak ve İlayda Adaklı müşterek hak sahibi
 - [ ] Kurulum videosu
 
 **Demo günü:**

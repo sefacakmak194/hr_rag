@@ -255,7 +255,6 @@ teslim kontrol listesi.
 
 - Kurulum videosu
 - `.exe` kod imzalama (Sprint 3b — sertifika bekliyor)
-- LICENSE telif sahibi adının doğrulanması
 
 ---
 
@@ -272,11 +271,15 @@ rolünün havuzu daralır ve eşik o rol için kalibre olmaktan çıkar.
 
 Tetikleyici: ilk kısıtlı doküman. `scripts/calibrate.ts` rol farkındalığı kazanmalı.
 
-### LICENSE telif sahibi adı — doğrulanmadı
+### LICENSE telif sahibi — ✅ çözüldü (19.08.2026)
 
-`Telif Hakkı (c) 2026 Sefa Çakmak` satırı GitHub kullanıcı adından çıkarıldı,
-onaylanmadı. İlayda Adaklı'nın ortak hak sahibi olarak yazılıp yazılmayacağı da
-belirsiz.
+`Sefa Çakmak` adı başlangıçta GitHub kullanıcı adından çıkarılmıştı ve
+onaylanmamıştı; İlayda Adaklı'nın durumu da belirsizdi. İkisi de **müşterek hak
+sahibi** olarak yazıldı.
+
+Tekil "telif hakkı sahibi" ifadeleri de çoğula çevrildi — yoksa belge kendi
+içinde çelişirdi: iki isim yazıp izni "sahibinden" istemek, kimden izin
+alınacağını belirsiz bırakır.
 
 ### `client/tsconfig.tsbuildinfo` izleniyor
 

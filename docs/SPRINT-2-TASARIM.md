@@ -266,7 +266,7 @@ vakası.
 
 ## Açık kalanlar
 
-- **Kalibrasyon**: eşik `SIMILARITY_THRESHOLD = 0.832` hâlâ 94 parçalık tam
+- **Kalibrasyon**: eşik `SIMILARITY_THRESHOLD = 0.828` ve 201 parçalık tam
   korpusa göre. Rol başına eşik (Sprint 1 tasarımında öngörülmüştü) henüz tek
   sayı; kısıtlı doküman sayısı arttığında ölçülmeli.
 - **Bekleyen sürüm bildirimi**: yürürlük tarihi geldiğinde kimseye haber

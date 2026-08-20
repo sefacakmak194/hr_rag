@@ -1,7 +1,12 @@
 # Model Karşılaştırma Matrisi
 
 Üretim: `npm run compare` · 2026-08-18
-Vaka sayısı: 48
+Vaka sayısı: 48 · Korpus: o tarihte 20 doküman / 94 parça, eşik 0.832
+
+> Bu tarihli bir ölçümdür. Korpus o günden bu yana 23 doküman / 201 parçaya çıktı ve
+> eşik 0.828 olarak yeniden kalibre edildi; değerlendirme paketi de 48'den 52 vakaya
+> genişledi. Model **kararı** değişmedi (`constants.ts` → `FOUNDRY_MODEL`), ama
+> aşağıdaki süre ve skorlar yeniden ölçülmedi. Tekrarlamak için: `npm run compare`.
 
 Tüm modeller **aynı** değerlendirme vakalarıyla, **aynı** korpus ve eşiklerle ölçüldü.
 Kademe hesaplayıcısı, niyet katmanı ve alaka kapısı LLM çağırmadığından o vakalar

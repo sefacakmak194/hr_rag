@@ -276,10 +276,10 @@ teslim kontrol listesi.
 
 ### Kalibrasyon — koşullu, henüz canlı değil
 
-`SIMILARITY_THRESHOLD = 0.832` **tek bir sayı** ve 94 parçalık tam korpusa göre
+`SIMILARITY_THRESHOLD = 0.828` **tek bir sayı** ve 201 parçalık tam korpusa göre
 ölçüldü. Sprint 1 tasarımı rol başına ayrı eşik öngörmüştü; uygulanmadı.
 
-Şu an sorun değil: 20 dokümanın hepsi `genel`, üç rol de aynı havuzu görüyor,
+Şu an sorun değil: 23 dokümanın hepsi `genel`, üç rol de aynı havuzu görüyor,
 BM25 indeksleri birebir aynı. **İlk doküman `ik` olarak etiketlendiği an** çalışan
 rolünün havuzu daralır ve eşik o rol için kalibre olmaktan çıkar.
 

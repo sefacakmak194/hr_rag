@@ -150,8 +150,8 @@ Hibrit puanın bir bileşeni BM25 ve BM25 **korpus istatistiğine** bağlı: bir
 kelimenin kaç dokümanda geçtiği (IDF). Havuz role göre daralınca bu istatistik
 kayar.
 
-Bugünkü baraj `SIMILARITY_THRESHOLD = 0.832`, 94 parçalık tam korpusta ölçüldü.
-60 parçalık bir havuzda aynı hassasiyet noktasına karşılık gelmez.
+Bugünkü baraj `SIMILARITY_THRESHOLD = 0.828`, 201 parçalık tam korpusta ölçüldü.
+Daha dar bir havuzda aynı hassasiyet noktasına karşılık gelmez.
 
 İki seçenek:
 
@@ -233,7 +233,7 @@ rolü `POST /api/documents`, `DELETE` ve `reindex` uçlarına erişemez.
 Hiç kullanıcı yoksa uygulama kurulum ekranı gösterir ve `yonetici` rolünde tek
 hesap açtırır. Sonraki hesaplar yönetici panelinden eklenir.
 
-### Mevcut 20 doküman `genel` etiketi alır
+### Mevcut dokümanların tamamı `genel` etiketi alır
 
 Sessizce `ik` yapmak bugünkü davranışı bozar ve eval paketi kırmızı yanar.
 Etiketleme yöneticiye bırakılır.

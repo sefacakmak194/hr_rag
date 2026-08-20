@@ -51,7 +51,9 @@ bir liste (`scope.service.ts`).
 **Bunun hikâyesi var — anlatmaya değer:** aynı sorunun uzun hali
 (*"Şirket bana özel araç tahsisi yapıyor mu?"*) zaten geçiyordu; kısa hali
 geçmiyordu. Sebep: "araç" korpusta *gereç* anlamında geçiyor
-(*"lisanssız araç kullanımı"*) ve benzerlik 0.8409 ile eşiği (0.832) aşıyordu.
+(*"lisanssız araç kullanımı"*) ve benzerlik 0.8409 ile eşiği aşıyordu. (Bu ölçümün
+yapıldığı sırada eşik 0.832 idi; korpus 201 parçaya çıkınca yeniden kalibre edildi ve
+bugün 0.828. Kararın gerekçesi değişmedi: iki dağılım örtüşüyor, eşikle çözülemiyor.)
 
 Eşiği yükseltmek denendi ve **ölçüldü**:
 
@@ -148,7 +150,9 @@ arkasında çalıştırılabilir bir betik var.
 | Ölçüm | Değer | Nasıl tekrarlanır |
 |---|---|---|
 | Uçtan uca değerlendirme | **51/52 (%98.1)** | `npm run eval` |
-| Test doğrulaması | **560 doğrulama / 16 paket** | `npm test` |
+| Saha seti — 100 gerçek çalışan sorusu | **98/98 cevaplandı, 0 sızıntı, 0 olgu hatası** | `npm run saha` |
+| Geniş yüzey — 10.000 sorgu | **%86.7 cevaplandı, 0 kapsam dışı sızıntı** | `npm run sweep` |
+| Test doğrulaması | **602 doğrulama / 16 paket** | `npm test` |
 | CI | Linux'ta yeşil, çevrim dışı | GitHub Actions |
 
 Açık kalan tek vaka **amb-4** (*"Bordro itirazımı kaç gün içinde

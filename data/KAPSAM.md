@@ -4,7 +4,7 @@ Bu belge, RAG asistanının **neye cevap vermesi beklendiğini** ve **neyi bilin
 kapsam dışı bıraktığını** tanımlar. Korpusa dahil değildir (indekslenmez); yalnızca
 tasarım kararını kayda geçirir.
 
-## Kapsam içi — 23 doküman / 11 alan
+## Kapsam içi — 23 doküman / 12 alan
 
 | Alan | Dokümanlar | Örnek sorular |
 |---|---|---|

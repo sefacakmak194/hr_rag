@@ -237,7 +237,7 @@ gerçek hatalar yakaladı.
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) her push ve PR'da çalışır:
 bağımlılıklar → tip kontrolü (sunucu **ve** `scripts/`) → istemci derlemesi →
-korpus indeksleme → 7 çevrimdışı test paketi.
+korpus indeksleme → 16 çevrimdışı test paketi.
 
 `eval` ve `compare` **bilinçli olarak kapsam dışı**: ikisi de çalışan bir Foundry
 Local örneği ve yerel GPU ister; barındırılan bir koşucuda kurulamaz. Bunlar

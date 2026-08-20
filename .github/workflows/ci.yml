@@ -8,7 +8,7 @@ name: CI
 
 # Push yalnizca ana dalda tetikler; dallar PR uzerinden olculur. Filtresiz
 # birakilirsa ayni PR icin iki kosum birden baslar (push + pull_request) ve
-# private depoda dakika kotasi bosa gider.
+# ayni sonuc iki kez raporlanir.
 on:
   push:
     branches: [main]
@@ -66,6 +66,7 @@ jobs:
       - name: Korpusu indeksle
         run: npm run ingest
 
-      # 7 paket: policy, evidence, documents, formats, audit, rag, pdf
+      # 16 paket. LLM gerektiren hicbiri yok: alaka kapisi, erisim kontrolu,
+      # surumleme, denetim butunlugu ve retrieval hepsi Foundry olmadan kosar.
       - name: Cevrimdisi test paketleri
         run: npm test

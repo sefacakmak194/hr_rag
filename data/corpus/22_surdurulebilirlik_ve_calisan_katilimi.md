@@ -23,3 +23,6 @@ Ofis katlarında kâğıt, plastik, cam ve pil için ayrı geri dönüşüm kutu
 
 ## Madde 8: Kurumsal İletişim Kanalları
 Şirket içi duyurular kurumsal e-posta ve İK Portalı ana sayfası üzerinden yapılır. Aylık bilgilendirme toplantıları her ayın ilk haftasında düzenlenir. Çalışanlar İnsan Kaynakları departmanına ik@sirket.local adresinden veya İK Portalı üzerinden randevu alarak birebir görüşme talep edebilir.
+
+## Madde 9: Sosyal Kulüpler ve Spor Takımları
+Çalışanlar ortak ilgi alanları çerçevesinde sosyal kulüp veya şirket spor takımı kurabilir. Kulüp kurmak için en az 8 çalışanın katılım beyanı ve bir kulüp sorumlusu belirlenerek İK departmanına başvurulması gerekir. Onaylanan her kulübe yıllık 30.000 TL etkinlik bütçesi tahsis edilir; bütçe malzeme, salon kirası ve turnuva katılım ücretlerinde kullanılır. Kulüp etkinlikleri mesai saatleri dışında planlanır; şirket içi turnuvalar için yılda 1 gün ücretli etkinlik izni verilir. Kulüp bütçelerinin kullanımı her yıl aralık ayında İK tarafından gözden geçirilir ve etkinlik düzenlemeyen kulüplerin bütçesi ertesi yıl yenilenmez.

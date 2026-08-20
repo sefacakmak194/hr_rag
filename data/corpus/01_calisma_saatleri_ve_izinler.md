@@ -11,13 +11,15 @@
 
 Yıllık izinlerin kullanımı için en az 10 gün öncesinden İK Portalı üzerinden talep oluşturulması zorunludur.
 
-## Madde 3: Mazeret ve Özel İzinler
-- Evlilik İzni: Çalışanın kendisinin evlenmesi durumunda 3 iş günü ücretli izin verilir.
-- Babalık İzni: Eşi doğum yapan çalışana 5 iş günü ücretli izin verilir.
-- Vefat İzni: Birinci derece yakınların vefatı halinde 3 iş günü ücretli izin verilir.
+## Madde 3: Evlilik, Vefat ve Diğer Mazeret İzinleri
+- Evlilik İzni: Çalışanın kendisinin evlenmesi durumunda 3 iş günü ücretli izin verilir. İzin için evlenme cüzdanı örneği veya resmî nikâh belgesi ibraz edilir.
+- Babalık İzni: Eşi doğum yapan çalışana 5 iş günü ücretli izin verilir. İzin için doğum belgesi veya çocuğun kimlik fotokopisi ibraz edilir.
+- Vefat İzni: Birinci derece yakınların vefatı halinde 3 iş günü ücretli izin verilir. İkinci derece yakınların vefatı halinde 1 iş günü ücretli izin verilir. İzin için vefat belgesi ibraz edilir.
+
+Mazeret izni belgeleri, izin dönüşünü takip eden 5 iş günü içinde İK Portalı üzerinden sisteme yüklenir. Belge ibraz edilmeyen mazeret izni yıllık izinden düşülür.
 
 ## Madde 4: Esnek Çalışma ve Giriş Çıkış Kaydı
-Şirketimizde esnek çalışma saati uygulanır; çalışan mesaiye 08:00 ile 10:00 arasında başlayabilir ve günlük çalışma süresini tamamlayarak çıkar. Mesai başlangıcında 30 dakikaya kadar gecikme tolerans kapsamındadır ve devamsızlık sayılmaz. Giriş ve çıkış saatleri kurumsal kimlik kartı ile kaydedilir; puantaj bu kayıtlar üzerinden aylık olarak İK tarafından tutulur. Kimlik kartını okutmayı unutan çalışan aynı gün içinde İK Portalı üzerinden düzeltme talebi oluşturur.
+Şirketimizde esnek çalışma saati uygulanır; çalışan mesaiye 08:00 ile 10:00 arasında başlayabilir ve günlük çalışma süresini tamamlayarak çıkar. Mesai başlangıcında 30 dakikaya kadar gecikme tolerans kapsamındadır ve devamsızlık sayılmaz.
 
 ## Madde 5: Çalışma Takvimi ve Hafta Sonu
 Şirketimizde hafta tatili cumartesi ve pazar günleridir; cumartesi günü rutin çalışma yapılmaz. Yıllık çalışma takvimi ve resmî tatil günleri her yıl aralık ayında İK Portalı'nda yayımlanır. Yoğun dönemlerde hafta sonu çalışması yalnızca çalışanın onayıyla ve fazla mesai hükümlerine göre yapılır. Mesai saatleri dışında gönderilen e-postalara aynı gün içinde yanıt verme zorunluluğu bulunmamaktadır.
@@ -33,3 +35,6 @@ Kısmi süreli çalışma, birim yöneticisi ve İK'nın ortak onayıyla mümkü
 
 ## Madde 9: Seyahat Süresi ve Ofis Dışı Toplantılar
 Görev nedeniyle yapılan şehir dışı seyahatlerde yolculuk süresi çalışma süresinden sayılır. Çalışanın ikametgâhı ile iş yeri arasındaki günlük gidiş geliş süresi çalışma süresine dâhil edilmez. Ofis dışında yapılan müşteri toplantıları mesai kapsamındadır ve ayrıca puantaja işlenir.
+
+## Madde 10: Turnike, Kart Okutma ve Puantaj Düzeltme
+Giriş ve çıkış saatleri turnikelerde kurumsal kimlik kartı okutularak kaydedilir; puantaj bu kayıtlar üzerinden aylık olarak İK tarafından tutulur. Kart basmayı unutan veya turnike arızası nedeniyle geçişi kaydedilmeyen çalışan, aynı gün içinde İK Portalı'ndaki "Puantaj Düzeltme" ekranından düzeltme talebi oluşturur. Düzeltme talebi birim yöneticisinin onayından sonra puantaja işlenir. Bir çalışan ayda en fazla 3 kez puantaj düzeltme talebi oluşturabilir; bunun üzerindeki talepler İK değerlendirmesine tabidir. Kartını kaybeden veya evde unutan çalışan güvenlik biriminden günlük geçici kart alır ve geçici kart kaydı puantaja otomatik yansır. Aylık puantaj her ayın ilk 3 iş günü içinde İK Portalı'nda çalışanın görüşüne açılır; itiraz bu süre içinde yapılır.

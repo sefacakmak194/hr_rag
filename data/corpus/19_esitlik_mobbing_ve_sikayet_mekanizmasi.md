@@ -26,3 +26,6 @@ Engelli çalışanlar için iş yerinde erişilebilirlik düzenlemeleri yapılı
 
 ## Madde 9: İnsan Kaynaklarına Erişim
 Çalışanlar İnsan Kaynakları departmanına ik@sirket.local adresinden ulaşabilir. İK Portalı üzerinden randevu alınarak birebir görüşme talep edilebilir; görüşme talepleri en geç 3 iş günü içinde karşılanır. Görüşmenin gizli yürütülmesi talep edilebilir ve bu talep kayda geçirilir.
+
+## Madde 10: Yönetici ile Anlaşmazlık ve İK Arabuluculuğu
+Yöneticisiyle sürekli iletişim sorunu yaşayan çalışan, konuyu önce yöneticisiyle birebir görüşerek çözmeye çalışır. Çözülemeyen durumlarda çalışan ik@sirket.local adresine başvurarak İK arabuluculuğu talep edebilir. İK, talebi aldıktan sonra 5 iş günü içinde taraflarla ayrı ayrı görüşür ve ardından ortak bir uzlaşma görüşmesi düzenler. Görüşmenin sonucunda üzerinde anlaşılan adımlar yazılı olarak kayda geçirilir ve 3 ay sonra İK tarafından takip edilir. Arabuluculuk süreci disiplin süreci değildir ve tek başına sicile işlenmez. Uzlaşma sağlanamayan ve çalışma ilişkisinin sürdürülemez hâle geldiği durumlarda görev veya birim değişikliği seçeneği değerlendirilir. Bildirimde bulunan çalışana bu nedenle olumsuz muamele yapılamaz.

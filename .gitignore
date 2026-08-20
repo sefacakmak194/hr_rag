@@ -52,3 +52,7 @@ data/.compare-checkpoint.json
 data/tarama/tarama.db
 data/tarama/tarama-ham.json
 data/tarama/tarama.csv
+
+# Saha denetimi ciktilari. Rapor (SAHA-RAPORU.md) IZLENIR — bulgu odur; ham
+# JSON her kosumda yeniden uretilir ve buyuktur.
+data/saha/saha-ham.json

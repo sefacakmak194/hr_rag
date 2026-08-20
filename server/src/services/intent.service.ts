@@ -146,8 +146,11 @@ function capabilityResponse(principal: Principal): string {
     '• İstihdam süreci — işe alım, deneme süresi, istifa, ihbar süreleri, çıkış işlemleri\n' +
     '• Performans ve gelişim — değerlendirme dönemleri, terfi, eğitim bütçesi\n' +
     '• Disiplin ve etik — disiplin kademeleri, devamsızlık, hediye politikası\n' +
-    '• İSG ve sağlık — iş kazası bildirimi, koruyucu donanım, periyodik muayene\n' +
-    '• Uyum ve işyeri ortamı — KVKK, veri saklama, mobbing, şikâyet kanalları, uzaktan çalışma\n\n' +
+    '• İSG ve sağlık — iş kazası bildirimi, koruyucu donanım, periyodik muayene, ortam ölçümleri\n' +
+    '• Uyum ve işyeri ortamı — KVKK, veri saklama, mobbing, şikâyet kanalları, uzaktan çalışma\n' +
+    '• Bilgi güvenliği ve BT — parola politikası, iki faktörlü doğrulama, cihaz kaybı, yapay zekâ araçları\n' +
+    '• Özlük işlemleri ve resmî belgeler — çalışma ve gelir belgesi, vize yazısı, IBAN bildirimi, SGK meslek kodu\n' +
+    '• Sürdürülebilirlik ve çalışan katılımı — gönüllülük, sosyal kulüpler, memnuniyet anketi, öneri sistemi\n\n' +
     'Bu kapsam dışındaki sorularda bilgi bulunmadığını belirtir, tahmin yürütmem.'
   );
 }

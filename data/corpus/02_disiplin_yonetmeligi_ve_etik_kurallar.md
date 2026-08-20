@@ -9,8 +9,11 @@
 ## Madde 3: Sigara ve Alkol Kullanımı
 Kapalı ofis alanlarında sigara ve elektronik sigara içmek yasaktır. Sigara içmek isteyen çalışanlar için bina girişinde ve teras katında işaretlenmiş açık hava sigara alanları bulunur. Mesai saatleri içinde alkol tüketimi ve alkollü olarak iş yerinde bulunmak yasaktır. Şirketin düzenlediği resmî etkinliklerde alkol servisi yapılması hâlinde ölçülü tüketim esastır.
 
-## Madde 4: Kimlik Kartı ve Ziyaretçi Kabulü
-Çalışanlar iş yerinde bulundukları süre boyunca kurumsal kimlik kartını görünür şekilde taşımak zorundadır. Kimlik kartının kaybedilmesi hâlinde durum aynı gün İdari İşler birimine bildirilir ve kart erişimi kapatılır. Kayıp kartın yenilenmesi için 250 TL kart bedeli çalışandan tahsil edilir. Çalışan, arkadaşını veya yakınını ofise davet etmek istediğinde önceden ziyaretçi kaydı oluşturur. Ziyaretçiler yalnızca önceden kayıt yaptırılarak kabul edilir; ziyaretçiye ziyaretçi kartı düzenlenir ve ziyaret süresince çalışan refakat eder.
+## Madde 4: Kurumsal Kimlik Kartı
+Çalışanlar iş yerinde bulundukları süre boyunca kurumsal kimlik kartını görünür şekilde taşımak zorundadır. Kimlik kartının kaybedilmesi hâlinde durum aynı gün İdari İşler birimine bildirilir ve kart erişimi kapatılır. Kayıp kartın yenilenmesi için 250 TL kart bedeli çalışandan tahsil edilir.
+
+## Madde 11: Ziyaretçi Kaydı ve Refakat
+Ofise gelecek ziyaretçiler için, çalışan tarafından ziyaret gününden önce İK Portalı üzerinden ziyaretçi kaydı oluşturulur. Kayıt, ziyaretçinin adı ve ziyaret saatini içerir; kaydı bulunmayan ziyaretçi binaya alınmaz. Çalışan; arkadaşını, eşini veya bir yakınını ofise davet edebilir. Bu kişiler de ziyaretçi sayılır ve haklarında ziyaretçi kaydı oluşturulur. Ziyaretçiye girişte ziyaretçi kartı düzenlenir ve ziyaret süresince kaydı oluşturan çalışan refakat eder. Ziyaretçiler sunucu odası ve arşiv gibi kısıtlı alanlara giremez. Mesai saatleri dışındaki ziyaretler için güvenlik birimine ayrıca bilgi verilir.
 
 ## Madde 5: Sosyal Medya ve Basınla İletişim
 Çalışanlar kişisel sosyal medya hesaplarında şirketin ticari sırlarını, müşteri bilgilerini ve yayımlanmamış finansal verilerini paylaşamaz. Kişisel hesaplardan yapılan paylaşımlarda çalışan, görüşlerinin şirketi bağlamadığını belirtmelidir. Şirket adına açıklama yapma yetkisi yalnızca Kurumsal İletişim birimine aittir. Basından gelen soru ve röportaj talepleri yanıtlanmadan Kurumsal İletişim birimine yönlendirilir.

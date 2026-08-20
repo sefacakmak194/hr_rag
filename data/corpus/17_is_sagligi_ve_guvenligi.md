@@ -24,8 +24,11 @@ Tüm çalışanlar için işe giriş sağlık raporu alınması zorunludur. Peri
 ## Madde 8: İlk Yardım ve Revir
 Her katta ilk yardım dolabı bulunur ve içeriği 3 ayda bir kontrol edilir. İlk yardım ekibi, sertifikalı ilk yardımcı belgesi olan çalışanlardan oluşur ve ekip listesi kat panolarında ilan edilir. Ana binada iş yeri hekiminin haftada 2 gün görev yaptığı bir revir bulunur. İlk yardım eğitimine katılmak isteyen çalışanlar İSG uzmanına başvurabilir.
 
-## Madde 9: İş Yeri Hijyeni ve Ortam Ölçümleri
-Ofis temizlik hizmeti her iş günü yapılır; ıslak hacimlerin temizlik işlemi günde 2 kez tekrarlanır. Temizlik ekibi mesai bitiminden sonra çalışır. Her katta içme suyu sebili bulunur ve sebil filtreleri 6 ayda bir değiştirilir. İş yerinde gürültü, aydınlatma ve iç ortam hava kalitesi ölçümleri yılda 1 kez yapılır ve sonuçları çalışanlarla paylaşılır. Havalandırma, ısıtma ve aydınlatma ile ilgili şikâyet İdari İşler birimine iletilir; şikâyet İK Portalı'ndaki talep formu üzerinden de açılabilir.
+## Madde 9: İş Yeri Hijyeni ve Temizlik
+Ofis temizlik hizmeti her iş günü yapılır; ıslak hacimlerin temizlik işlemi günde 2 kez tekrarlanır. Temizlik ekibi mesai bitiminden sonra çalışır. Her katta içme suyu sebili bulunur ve sebil filtreleri 6 ayda bir değiştirilir.
+
+## Madde 16: Ortam Ölçümleri, Havalandırma ve Isıtma Şikâyetleri
+İş yerinde gürültü ölçümü, aydınlatma ölçümü ve iç ortam hava kalitesi ölçümü yılda 1 kez yapılır. Ölçüm sonuçları çalışanlarla paylaşılır ve sınır değerin aşıldığı noktalarda İSG Kurulu düzeltici önlem kararı alır. Havalandırma, ısıtma, soğutma ve aydınlatma ile ilgili şikâyetler İdari İşler birimine iletilir; şikâyet İK Portalı'ndaki talep formu üzerinden de açılabilir. Şikâyet, alındığı tarihten itibaren 5 iş günü içinde değerlendirilir ve çalışana sonuç bildirilir. Ölçüm yaptırılmasını talep eden çalışan başvurusunu İSG Kuruluna iletebilir.
 
 ## Madde 10: Bulaşıcı Hastalık ve Salgın Dönemi
 Ateş, öksürük veya bulaşıcı hastalık belirtisi olan çalışanın iş yerine gelmemesi ve durumu yöneticisine bildirmesi esastır. Bu durumda uzaktan çalışma imkânı öncelikli olarak değerlendirilir. Salgın ilan edilen dönemlerde maske kullanımı, Sağlık Bakanlığı kararlarına uygun olarak zorunlu hâle getirilebilir. Salgın döneminde uygulanacak çalışma düzeni İK tarafından ayrıca duyurulur.

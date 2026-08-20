@@ -59,6 +59,20 @@ const inScope = [
   'İhbar süresi ne kadar?',
   'Mesai saatleri ne?',
   'Kıdem tazminatı alabilir miyim?',
+  // 20.08.2026 genislemesi — 100 soruluk saha setinin actigi alanlar.
+  // Bunlar eklenmezse esik, korpusun ESKI yuzeyine gore kalibre olur.
+  'Bordromu nereden görüntülerim?',
+  'IBAN bilgimi nasıl güncellerim?',
+  'Kart basmayı unuttum ne yapmalıyım?',
+  'İzin bakiyemi nereden görebilirim?',
+  'Kullanmadığım izin devreder mi?',
+  'İbraname ne zaman imzalanır?',
+  'Vize için çalışma yazısı alabilir miyim?',
+  'Meslek kodum yanlış görünüyor',
+  'Yetenek havuzuna nasıl girilir?',
+  '360 derece değerlendirme kimleri kapsıyor?',
+  'Kurumsal indirim anlaşmaları neler?',
+  'Şirket hattı tahsis ediliyor mu?',
 ];
 
 const outOfScope = [

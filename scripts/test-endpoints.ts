@@ -415,6 +415,115 @@ check(
 const yoneticiIptal = await req('DELETE', `/api/documents/${KISITLI_YONETIM}/pending`, asYonetici);
 check(yoneticiIptal.status === 200, `yonetici kendi gordugunu iptal edebiliyor (${yoneticiIptal.status})`);
 
+// ==================================================== 9) kayit ucu (kayit ol)
+console.log('\n  Kayit ucu (POST /api/auth/register)\n');
+
+/**
+ * Kayit ucu KIMLIKSIZ cagrilir, bu yuzden `req` yardimcisi yetmiyor: donen
+ * oturum cerezinin gercekten yazildigini da gormek gerekiyor. Cerez yazilmazsa
+ * kullanici kayit olur ama uygulamaya giremez — sessiz ve can sikici bir hata.
+ */
+async function kayit(body: unknown): Promise<Res & { cookie: string | null }> {
+  const res = await fetch(`${BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    /* JSON degilse bos birak */
+  }
+  const token = /hr_session=([^;]+)/.exec(res.headers.get('set-cookie') ?? '')?.[1] ?? null;
+  return { status: res.status, body: parsed, cookie: token ? `hr_session=${token}` : null };
+}
+
+const yeniCalisan = await kayit({
+  username: 'Zeynep',
+  displayName: 'Zeynep Yılmaz',
+  password: 'parola12345',
+  role: 'calisan',
+});
+check(yeniCalisan.status === 201, `kimliksiz kayit acilabiliyor (${yeniCalisan.status})`);
+check(yeniCalisan.body.role === 'calisan', `secilen rol kaydedildi: ${String(yeniCalisan.body.role)}`);
+check(yeniCalisan.body.username === 'zeynep', `kullanici adi normalize edildi: ${String(yeniCalisan.body.username)}`);
+check(yeniCalisan.cookie !== null, 'kayit sonrasi oturum cerezi yazildi (tekrar giris gerekmiyor)');
+
+// ---------------------------------------------------------------- dogrulama
+check(
+  (await kayit({ username: 'zeynep', password: 'parola12345', role: 'calisan' })).status === 409,
+  'ayni kullanici adi ikinci kez kayit olamiyor',
+);
+check(
+  (await kayit({ username: 'sahte', password: 'parola12345', role: 'patron' })).status === 400,
+  'tanimsiz rol reddediliyor',
+);
+check(
+  (await kayit({ username: 'sahte', password: 'parola12345' })).status === 400,
+  'rol verilmeden kayit reddediliyor',
+);
+check(
+  (await kayit({ username: 'sahte', password: 'kisa', role: 'calisan' })).status === 400,
+  'kisa parola reddediliyor (identity.service kurali uca da yansiyor)',
+);
+check(
+  (await kayit({ username: 'sahte', role: 'calisan' })).status === 400,
+  'parolasiz kayit reddediliyor',
+);
+
+// ------------------------------------------------- rol = gorunurluk (kritik)
+//
+// Kayit ekraninin ASIL sonucu bu: kullanici rolu secerken hangi dokumanlari
+// gorecegini de secmis oluyor. Ucun rolu dogru yazdigini gormek yetmez —
+// erisim filtresinin o rol icin gercekten calistigi dogrulanmali.
+// Bolum 5 `genel_izin.md` etiketini `ik` yapmisti; geri alinmazsa "calisan
+// hicbir sey gormuyor" testi BOS gecer — dogru sonucu yanlis sebeple verir.
+const geriEtiket = await req('PATCH', `/api/documents/${GENEL}/label`, asYonetici, { label: 'genel' });
+check(geriEtiket.status === 200, `test icin ${GENEL} yeniden genel yapildi (${geriEtiket.status})`);
+
+const kayitliCalisanCerez = yeniCalisan.cookie as string;
+const kayitliListe = await req('GET', '/api/documents', kayitliCalisanCerez);
+check(
+  kayitliListe.status === 200 && names(kayitliListe).join(',') === GENEL,
+  `kayitli calisan YALNIZCA genel dokumani goruyor: ${names(kayitliListe).join(', ') || '(bos)'}`,
+);
+check(
+  (await req('POST', '/api/documents/reindex', kayitliCalisanCerez)).status === 403,
+  'kayitli calisan dokuman yonetimine erisemiyor',
+);
+
+// Karsi ucun da dogrulanmasi gerekiyor: `yonetici` secmek gercekten tam yetki
+// verir. Bu bir GUVENLIK TAKASI — kendi kendine kayitta rolu kullanici beyan
+// ediyor. Test bunu gizlemek icin degil, GORUNUR kilmak icin burada.
+const yeniYonetici = await kayit({
+  username: 'kendi-kendine-yonetici',
+  displayName: 'Test',
+  password: 'parola12345',
+  role: 'yonetici',
+});
+check(yeniYonetici.status === 201, `yonetici rolu kayit ekranindan secilebiliyor (${yeniYonetici.status})`);
+check(
+  names(await req('GET', '/api/documents', yeniYonetici.cookie as string)).length === 3,
+  'DIKKAT: kayit ekranindan yonetici secen kullanici TUM dokumanlari goruyor',
+);
+
+// --------------------------------------------------- ilk hesap kurulumdan gecer
+//
+// Bu veritabaninda kullanici zaten var; dolayisiyla test edilebilen taraf
+// aynadaki kural: kurulum ucu ikinci kez calismaz. Kayit ucundaki `needsSetup`
+// kapisi ayni sayimi kullanir.
+check(
+  (
+    await req('POST', '/api/auth/setup', undefined, {
+      username: 'ikinci-kurulum',
+      password: 'parola12345',
+    })
+  ).status === 409,
+  'kurulum ucu kullanici varken ikinci kez calismiyor',
+);
+
 // ---------------------------------------------------------------- sonuc
 server.close();
 try {

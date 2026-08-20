@@ -1,15 +1,16 @@
 # Private Enterprise HR & Policy Local RAG Assistant
 
 Kurumsal İK mevzuatı üzerinde **%100 çevrim dışı (air-gapped)** çalışan, kaynak gösterimli
-yerel RAG asistanı. **23 doküman / 201 bölüm** ile 11 İK alanını kapsar: çalışma düzeni,
-izinler, ücret ve yan haklar, istihdam süreci, performans, disiplin, İSG ve uyum (KVKK).
+yerel RAG asistanı. **23 doküman / 201 bölüm** ile 12 İK alanını kapsar: çalışma düzeni,
+izinler, ücret ve bordro, yan haklar, istihdam süreci, performans ve gelişim, disiplin
+ve etik, İSG, uyum (KVKK), bilgi güvenliği, sürdürülebilirlik ve özlük işlemleri.
 Kapsamın tam dökümü: [data/KAPSAM.md](data/KAPSAM.md).
 
 > **Projeyi hızlı değerlendirmek için:** [docs/SPRINT-5-TESLIM.md](docs/SPRINT-5-TESLIM.md)
 > — 6 istasyonluk demo akışı, derlenmiş ölçümler ve kurulum. Bu README mühendislik
 > ayrıntısı içindir.
 
-> **Korpus kurgusaldır.** `data/corpus/` altındaki 22 doküman gerçek bir şirketin
+> **Korpus kurgusaldır.** `data/corpus/` altındaki 23 doküman gerçek bir şirketin
 > mevzuatı değildir; sistemi göstermek ve ölçmek için yazılmıştır. İçindeki tutarlar,
 > gün sayıları ve süreçler örnektir ve hiçbir kurum için bağlayıcı değildir.
 
@@ -29,13 +30,13 @@ embedding üretimi, benzerlik araması ve model çıkarımı host makinede gerç
           ▼
 [ SQLite vektör deposu (node:sqlite) ]
           │
-[ Sorgu ] ─┴─► Kosinüs benzerliği ──► İki aşamalı alaka kapısı ──► Top-K parça
-                                                                      │
-                                                                      ▼
-                                             [ Microsoft Foundry Local (OpenAI uyumlu) ]
-                                                                      │
-                                                                      ▼ SSE token akışı
-                                                              [ React Arayüzü ]
+[ Sorgu ] ─┴─► Hibrit skor (vektör+BM25) ──► Alaka kapısı (tek eşik) ──► Top-K parça
+                                                                            │
+                                                                            ▼
+                                                   [ Microsoft Foundry Local (OpenAI uyumlu) ]
+                                                                            │
+                                                                            ▼ SSE token akışı
+                                                                    [ React Arayüzü ]
 ```
 
 | Katman | Teknoloji | Not |
@@ -95,6 +96,34 @@ npm run client    # UI   → http://localhost:5173
 
 Tarayıcıda <http://localhost:5173> açın. Sağ üstteki durum göstergesi indeks ve
 Foundry Local bağlantısını canlı raporlar.
+
+### İlk giriş, kayıt ve roller
+
+Veritabanında hiç hesap yoksa giriş ekranı yerine **ilk kurulum** görünür ve
+oluşturulan tek hesap `yonetici` olur. Bu sıra zorunlu: kayıt ucu, kurulum
+tamamlanmadan **409** döndürür. Aksi halde sistemin ilk kullanıcısı kendini
+`calisan` yapabilir, hiç yönetici oluşmaz ve doküman yönetimi ile denetim
+ekranları kalıcı olarak kapalı kalırdı.
+
+Kurulumdan sonra giriş ekranında **Kayıt ol** sekmesi açılır. Rol kayıt
+sırasında seçilir:
+
+| Rol | Gördüğü dokümanlar | Ek yetkiler |
+| --- | --- | --- |
+| `calisan` | `genel` | — |
+| `ik` | `genel` + `ik` | doküman yükleme, sürüm yönetimi, boşluk raporu |
+| `yonetici` | hepsi | erişim etiketi, denetim kaydı, bütünlük/arşiv, hesap açma |
+
+> **Güvenlik takası — bilinçli.** Kayıt ekranında rolü **kullanıcının kendisi
+> beyan eder**. Rol aynı zamanda hangi dokümanların görüleceğini belirlediği
+> için (`VISIBLE_LABELS`), erişim etiketi sistemi bu ekranın açık olduğu bir
+> kurulumda beyana dayalı hale gelir: `yonetici` seçen herkes tüm korpusu görür.
+> `scripts/test-endpoints.ts` bunu gizlemek yerine **açıkça test eder**.
+>
+> Hesap açmanın onaydan geçmesi gereken kurulumlarda `/api/auth/register`
+> ucunu kaldırın; `POST /api/auth/users` (yalnızca yönetici) rolü atayan taraf
+> olarak zaten yerinde duruyor ve giriş ekranı kayıt sekmesini kurulum
+> beklerken zaten göstermiyor.
 
 ---
 
@@ -223,15 +252,18 @@ bir hesap kullanılır (bkz. `scripts/eval-auth.ts`, `scripts/eval-sandbox.ts`).
 | `sweep` | 10.000 sorgu (500 temel soru × 20 ifade) — hangi konular cevapsız kalıyor |
 | `saha` | 100 gerçek çalışan sorusu, **uçtan uca** — boşluk, sızıntı ve olgu hatası |
 
-Pakette şunlar var: şartname Bölüm 6 / Adım 3 kabul soruları, 8 İK alanının tamamını
-kapsayan retrieval regresyonları, kapsam dışı reddetme senaryoları ve niyet sınıflandırma
-testleri. Testler LLM'den bağımsız çalışır — kaynak seçimi ve alaka kapısı deterministik
+Pakette şunlar var: şartname Bölüm 6 / Adım 3 kabul soruları, 8 İK alanına yayılan
+retrieval regresyonları, kapsam dışı reddetme senaryoları ve niyet sınıflandırma
+testleri. Korpusun tamamı 12 alan; `test:rag` bunların hepsini değil, regresyona en açık
+olanları örnekler — geniş yüzey taraması `sweep` ve `saha` paketlerinin işidir.
+Testler LLM'den bağımsız çalışır — kaynak seçimi ve alaka kapısı deterministik
 biçimde ölçülür, dolayısıyla model değiştirmek testleri etkilemez.
 
-`eval` paketinin grupları: şartname kabul soruları (3), sayısal olgular (15), kademe
-hesabı (5), **ayrım** (14 — aynı maddede birden çok olgu), **çok turlu** (6), kapsam dışı
-(3), sohbet (2). "Ayrım" ve "çok turlu" grupları uçtan uca ölçüm için kritiktir; ikisi de
-gerçek hatalar yakaladı.
+`eval` paketinin 52 vakası şu gruplara ayrılır: şartname kabul soruları (3), sayısal
+olgular (15), kademe hesabı (5), **ayrım** (14 — aynı maddede birden çok olgu),
+**çok turlu** (6), **dayanıklılık** (4 — aynı sorunun yeniden ifade edilmiş hali),
+kapsam dışı (3), sohbet (2). "Ayrım", "çok turlu" ve "dayanıklılık" grupları uçtan uca
+ölçüm için kritiktir; üçü de gerçek hatalar yakaladı.
 
 ### Sürekli entegrasyon (CI)
 
@@ -349,7 +381,8 @@ değiştiğinde metin kendiliğinden güncel kalır.
 kullanılan E5 modeli için **geçerli değildir**: E5 skorları dar bir banda sıkıştırır,
 dolayısıyla 0.65 her sorguyu geçirir ve halüsinasyon engellemesi tamamen çöker.
 
-`scripts/calibrate.ts` ile 94 parçalık korpusta 34 kapsam içi / 8 kapsam dışı sorgu ölçüldü:
+Ölçütün kendisi de ölçülerek seçildi. İlk kalibrasyon (94 parçalık korpus, 34 kapsam içi
+/ 8 kapsam dışı sorgu) dört aday ölçütü karşılaştırdı ve yalnızca biri ayırıcı çıktı:
 
 | Ölçüt | Kapsam içi min | Kapsam dışı maks | Ayrım |
 |---|---|---|---|
@@ -358,9 +391,9 @@ dolayısıyla 0.65 her sorguyu geçirir ve halüsinasyon engellemesi tamamen ç�
 | Gap (top − ikinci) | 0.0016 | 0.0248 | örtüşüyor |
 | Lead (top − rakip ort.) | 0.0147 | 0.0292 | örtüşüyor |
 
-Kapı tek ölçüt uygular: **en iyi skor ≥ `0.845`**. Geçerse en iyi skora `0.05` bandı
-içindeki parçalar (en fazla `TOP_K`) bağlama alınır; aksi halde **LLM'e hiç gidilmeden**
-sabit yanıt döner:
+Kapı bu yüzden tek ölçüt uygular: **en iyi skor ≥ `SIMILARITY_THRESHOLD`** (bugün
+`0.828`). Geçerse en iyi skora `0.05` bandı içindeki parçalar (en fazla `TOP_K`)
+bağlama alınır; aksi halde **LLM'e hiç gidilmeden** sabit yanıt döner:
 
 > Şirket içi mevzuat dokümanlarında bu konu hakkında bilgi bulunmamaktadır. Lütfen İK departmanı ile doğrudan iletişime geçiniz.
 
@@ -449,13 +482,32 @@ yoksa *"Yıllık izin talebini kaç gün önce yapmalıyım?"* kademe tablosuyla
 Salt vektör araması kapsam içi/dışı ayrımını çok dar bir boşlukla yapıyordu. Sözcük
 bileşeni eklendi: `skor = (1-w)·kosinüs + w·BM25_normalize`.
 
-Ağırlık `scripts/calibrate.ts` ile süpürüldü (34 kapsam içi / 10 kapsam dışı sorgu):
+Ağırlık `scripts/calibrate.ts` ile süpürüldü. İlk ölçüm (94 parçalık korpus, 34 kapsam
+içi / 10 kapsam dışı sorgu) sözcük bileşeninin boşluğu neredeyse ikiye katladığını
+gösterdi ve `w = 0.05` bu ölçümle seçildi:
 
 | w | Kapsam içi min | Kapsam dışı maks | Ayrım boşluğu |
 |---|---|---|---|
 | 0.00 (salt vektör) | 0.8499 | 0.8404 | 0.0096 |
 | **0.05 (seçilen)** | 0.8408 | 0.8230 | **0.0179** — 1.9x |
 | ≥0.15 | — | — | negatif (örtüşüyor) |
+
+**Bugünkü ölçüm (201 parça, 50 kapsam içi / 13 kapsam dışı) iki katmanlı okunur.**
+Korpus büyüdükçe kapı tek başına TÜM kapsam dışı sorguları ayıramaz hâle geldi; ayıramadığı
+sorgular zaten `scope.service` listesinde ve oraya bilerek konuldu (bkz. aşağıdaki bölüm):
+
+| Ölçüm (w = 0.05) | Değer | Hangi sorgu |
+|---|---|---|
+| Kapsam içi en düşük | 0.8004 | *"Bordromu nereden görüntülerim?"* |
+| Kapsam dışı en yüksek — **listelenmemiş** | 0.8021 | *"Ofise evcil hayvan getirebilir miyim?"* |
+| Kapsam dışı en yüksek — tümü | 0.8436 | *"Şirket aracı tahsis ediliyor mu?"* (listede) |
+
+Eşik listelenmemiş maksimumun (0.8021) üstünde olmalı; `0.828` bu koşulu sağlar.
+Kapsam içi minimumu aşağı çeken tek sorgu bir **gövdeleyici** artefaktıdır, korpus eksiği
+değil: `"bordromu"` → `"bordrom"` kırpılıyor ve korpustaki `"bordro"` ile eşleşmediği
+için BM25 bileşeni 0 kalıyor, füzyon skoru %5 düşüyor. Aynı sorunun uzun biçimi
+(*"Bu ayki bordromu nereden ve nasıl görüntüleyebilirim?"*) 0.8378 ile geçiyor.
+Eşiği bu tek sorgu için düşürmek kapsam dışı sorguları içeri alırdı; **düşürülmedi.**
 
 **Daha büyük ağırlık işe yaramıyor** ve nedeni öğretici: en zorlu kapsam dışı soru
 *"özel araç **tahsisi**"*, ekipman dokümanındaki *"**tahsis** edilen dizüstü bilgisayar"*
@@ -585,9 +637,10 @@ tuzak orada) ve işaret satırı kullanılmaz — blok yalnızca işaretten ibar
 model öneki cevabına kopyalıyordu.
 
 > **Neden el yazımı bir "olgu tablosu" değil:** korpusta aynı maddede ≥2 sayısal olgu
-> taşıyan **25 bölüm** var. Hepsini elle tabloya yazmak sistemi RAG olmaktan çıkarıp SSS
-> arama motoruna çevirirdi ve **kullanıcının yüklediği** yeni dokümanlar için hiç
-> çalışmazdı. Bu mekanizma korpustan bağımsızdır.
+> (sayı + birim) taşıyan **61 bölüm** var — 201 bölümün yaklaşık üçte biri. Hepsini elle
+> tabloya yazmak sistemi RAG olmaktan çıkarıp SSS arama motoruna çevirirdi ve
+> **kullanıcının yüklediği** yeni dokümanlar için hiç çalışmazdı. Bu mekanizma
+> korpustan bağımsızdır.
 
 Seçilen cümle SSE `metadata` olayında da döner; arayüzde alıntı rozetine tıklanınca
 cevabın dayandığı cümle görünür.
@@ -657,8 +710,8 @@ kullanılır. Okuma tarafında `pdfjs-dist` (saf JS) çalışır; punto büyükl
 çıkarımı yapılır, böylece mevcut başlık-duyarlı chunker ve "Madde N" alıntıları
 değişmeden korunur.
 
-**Doğrulanmış sadakat:** PDF korpusundan indeksleme **94 parça** üretiyor — markdown ile
-birebir aynı. Retrieval de aynı maddeleri getiriyor, kapsam dışı sorular yine reddediliyor.
+**Doğrulanmış sadakat:** PDF korpusundan indeksleme **23 doküman / 201 parça** üretiyor —
+markdown ile birebir aynı. Retrieval de aynı maddeleri getiriyor, kapsam dışı sorular yine reddediliyor.
 
 > Punto eşiği 1.15 seçilirse 13.0pt'lik madde başlıkları kaçırılır (gövde 11.5pt →
 > eşik 13.22) ve tüm doküman tek bölüme düşer. 1.10 kullanılıyor. Ayrıca pdfjs
@@ -679,7 +732,7 @@ biçimi geçiyorsa mevzuatın biçimi sorguya eklenir (değiştirilmez).
 
 > Tabloya ekleme kuralı: yalnızca kullanıcı biçimi korpusta **hiç** geçmiyorsa ekleyin.
 > İkisi de geçiyorsa genişletme gereksizdir ve alaka kapısının zaten dar olan
-> ayrım boşluğunu (0.0179) daraltma riski taşır.
+> ayrım boşluğunu daraltma riski taşır.
 
 **Kutupluluk.** *"ücretli"* ile *"ücretsiz"* birbirinin zıddı ama embedding uzayında
 neredeyse aynı yerde. `polarity.service.ts` bir çift tablosu tutar; sorgu bir ucu
@@ -751,7 +804,7 @@ tekrarı) ve yakalarsa akışı keser; yerine mevzuatın **birebir** cümlesi g�
 
 ## Korpus sağlığı denetimi
 
-Bu projedeki 20 doküman elle yazıldı — temiz, tutarlı, çelişkisiz. Gerçek İK arşivleri
+Bu projedeki 23 doküman elle yazıldı — temiz, tutarlı, çelişkisiz. Gerçek İK arşivleri
 böyle değil. `corpusAudit.service.ts` üç senaryoyu deterministik olarak raporlar
 (`GET /api/corpus/audit`, Kaynaklar panelinde görünür):
 
@@ -843,7 +896,7 @@ Sınırlar: dosya başına 10 MB, doküman başına **500 parça**. İkinci sın
 doğdu — embedding süreç içinde hesaplandığından 1.6 MB'lik bir metin (~1100 parça)
 isteği dakikalarca askıda bıraktı ve sistem bozulmuş gibi göründü. Bu ölçek için doğru
 çözüm arka plan işi + ilerleme bildirimi olurdu; kapsamda değil, bu yüzden açıkça
-reddediliyor. Ölçek için: mevcut 20 doküman toplam 94 parça, 150 sayfalık gerçek bir
+reddediliyor. Ölçek için: mevcut 23 doküman toplam 201 parça, 150 sayfalık gerçek bir
 İK el kitabı ~300 parça eder.
 
 Her değişiklikten sonra yanıt bir **uyarı** taşır ve panel bunu olduğu gibi gösterir:
@@ -1261,7 +1314,9 @@ private-hr-rag/
 | `/api/documents/pending` | GET | Yürürlüğe girmeyi bekleyen sürümler |
 | `/api/documents/pending/promote` | POST | Tarihi gelmiş sürümleri elle yürürlüğe al |
 | `/api/documents/:name/pending` | DELETE | Planlanmış sürümden vazgeç |
-| `/api/auth/status` · `/auth/login` · `/auth/logout` · `/auth/setup` · `/auth/users` | — | Kimlik katmanı (Sprint 1) |
+| `/api/auth/status` · `/auth/login` · `/auth/logout` · `/auth/setup` | — | Kimlik katmanı (Sprint 1) |
+| `/api/auth/register` | POST | `{ username, displayName?, password, role }` → kendi kendine kayıt; rolü **kullanıcı seçer**, kurulum tamamlanmadan 409 |
+| `/api/auth/users` | POST | `{ username, displayName?, password, role }` → rolü **yönetici atar** |
 | `/api/audit` | GET | Denetim kaydı (yönetici tümü, diğerleri kendi satırları) |
 | `/api/audit/integrity` | GET | Hash zinciri durumu (yalnızca yönetici) |
 | `/api/audit/archive` | POST | İmzalı arşiv üret (yalnızca yönetici) |
@@ -1303,7 +1358,7 @@ Tüm değerler `server/src/config/constants.ts` içinde, ortam değişkeniyle ge
 
 Deney anahtarları:
 
-| Değişken | Ne yapar | Ölçüm (48 vaka, sıcaklık 0) |
+| Değişken | Ne yapar | Ölçüm (o günkü 48 vakalık paket, sıcaklık 0) |
 |---|---|---|
 | `EVIDENCE_FOCUS=0` | Cümle düzeyinde kanıt seçimini kapatır | 44/48 (açıkken **47/48**) |
 | `EVIDENCE_ONLY=1` | İşaretli cümle dışında tam metni bağlama koymaz | 46/48 — **daha kötü**, varsayılan kapalı |

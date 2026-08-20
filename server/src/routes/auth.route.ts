@@ -119,37 +119,101 @@ router.post('/auth/logout', (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-/** Yeni hesap — yalnizca yonetici. */
+/**
+ * Hesap olusturma govdesini dogrular.
+ *
+ * Iki uc paylasiyor (`/auth/register` ve `/auth/users`); kural tek yerde
+ * dursun ki biri sikilastirilirken digeri geride kalmasin.
+ */
+function readAccountInput(
+  body: unknown,
+): { username: string; displayName: string; password: string; role: Role } | string {
+  const { username, displayName, password, role } = (body ?? {}) as Record<string, unknown>;
+
+  if (typeof username !== 'string' || typeof password !== 'string') {
+    return 'Kullanıcı adı ve parola gereklidir.';
+  }
+  if (!ROLES.includes(role as Role)) {
+    return `Rol şunlardan biri olmalı: ${ROLES.join(', ')}`;
+  }
+
+  return {
+    username,
+    displayName: typeof displayName === 'string' ? displayName : username,
+    password,
+    role: role as Role,
+  };
+}
+
+/** createUser hatasini HTTP yanitina cevirir. UNIQUE kisiti = kullanici adi dolu. */
+function sendAccountError(res: Response, error: unknown): void {
+  const message = (error as Error).message;
+  const duplicate = message.includes('UNIQUE');
+  res.status(duplicate ? 409 : 400).json({
+    error: duplicate ? 'Bu kullanıcı adı zaten kayıtlı.' : message,
+  });
+}
+
+/**
+ * Kendi kendine kayit — giris ekranindaki "Kayit ol".
+ *
+ * ROL KULLANICI TARAFINDAN SECILIR. Bu bilincli bir urun karari ve guvenlik
+ * acisindan `/auth/users`ten ZAYIFTIR: rolu secen kisi, o rolun gordugu
+ * dokumanlari da secmis olur (bkz. VISIBLE_LABELS). Yani kayit ekrani, erisim
+ * etiketi sistemini kendi kendine beyana dayali hale getirir. Kurumsal bir
+ * kurulumda dogru olan, kaydin yonetici onayindan gecmesidir; bu uc, hesap
+ * acmanin yoneticiye bagimli olmadigi kurulumlar icindir.
+ *
+ * ILK HESAP BURADAN ACILAMAZ: `needsSetup` dogruyken istek reddedilir. Aksi
+ * halde sistemin ilk kullanicisi kendini `calisan` yapabilir, hic yonetici
+ * olusmaz ve dokuman yonetimi ile denetim ekranlari kalici olarak kapali
+ * kalirdi — geri donusu elle SQL gerektiren bir durum.
+ */
+router.post('/auth/register', (req: Request, res: Response) => {
+  const db = getDb();
+
+  if (needsSetup(db)) {
+    res.status(409).json({ error: 'Önce ilk kurulumu tamamlayın: ilk hesap yönetici olmalıdır.' });
+    return;
+  }
+
+  const input = readAccountInput(req.body);
+  if (typeof input === 'string') {
+    res.status(400).json({ error: input });
+    return;
+  }
+
+  try {
+    const user = createUser(db, input);
+    // Kayit biter bitmez oturum acilir: kullanici az once verdigi parolayi
+    // hemen tekrar yazmak zorunda kalmasin.
+    const token = createSession(db, { userId: user.id, username: user.username, role: user.role });
+    setSessionCookie(res, token, SESSION_HOURS);
+
+    res.status(201).json({ username: user.username, role: user.role, displayName: user.displayName });
+  } catch (error) {
+    sendAccountError(res, error);
+  }
+});
+
+/** Yeni hesap — yalnizca yonetici. Rolu ATAYAN taraf burada yoneticidir. */
 router.post('/auth/users', requireAuth, (req: Request, res: Response) => {
   if (req.principal?.role !== 'yonetici') {
     res.status(403).json({ error: 'Hesap oluşturmak için yönetici yetkisi gerekiyor.' });
     return;
   }
 
-  const { username, displayName, password, role } = req.body ?? {};
-  if (typeof username !== 'string' || typeof password !== 'string') {
-    res.status(400).json({ error: 'Kullanıcı adı ve parola gereklidir.' });
-    return;
-  }
-  if (!ROLES.includes(role as Role)) {
-    res.status(400).json({ error: `Rol şunlardan biri olmalı: ${ROLES.join(', ')}` });
+  const input = readAccountInput(req.body);
+  if (typeof input === 'string') {
+    res.status(400).json({ error: input });
     return;
   }
 
   try {
-    const user = createUser(getDb(), {
-      username,
-      displayName: typeof displayName === 'string' ? displayName : username,
-      password,
-      role: role as Role,
-    });
+    const user = createUser(getDb(), input);
     res.status(201).json({ username: user.username, role: user.role, displayName: user.displayName });
   } catch (error) {
-    const message = (error as Error).message;
-    // UNIQUE kisiti: kullanici adi zaten var.
-    res.status(message.includes('UNIQUE') ? 409 : 400).json({
-      error: message.includes('UNIQUE') ? 'Bu kullanıcı adı zaten kayıtlı.' : message,
-    });
+    sendAccountError(res, error);
   }
 });
 

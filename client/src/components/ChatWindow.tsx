@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CitationList } from './CitationBadge';
 import DetailsBlock from './DetailsBlock';
-import { useSideStats } from '../sideStats';
-import type { AnswerBasis, AnswerDetails, Citation, HealthResponse, Message } from '../types';
+import type { AnswerBasis, AnswerDetails, Citation, Message } from '../types';
 
 const SUGGESTIONS = [
   'Ne iş yaparsın?',
@@ -14,17 +13,6 @@ const SUGGESTIONS = [
 ];
 
 const uid = () => Math.random().toString(36).slice(2);
-
-/**
- * Model adindaki donanim eki kenar cubuguna sigmiyor.
- *
- * "qwen2.5-1.5b-instruct-cuda-gpu" iki satira tasiyor; ayirt edici kisim
- * bastaki ad, sondaki ek ayni makinede zaten sabit.
- */
-function kisaModel(ad: string | null): string {
-  if (!ad) return 'bağlı';
-  return ad.replace(/-(cuda|generic|dml|qnn)?-?(gpu|cpu|npu)$/i, '');
-}
 
 /** Oturum kimligi sekme omru boyunca sabit kalir; sunucu hafizasi buna baglanir. */
 const SESSION_KEY = 'phr-session-id';
@@ -40,15 +28,7 @@ function getSessionId(): string {
 const fmtTime = (d: Date) =>
   d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-export function ChatWindow({
-  health,
-  healthError,
-  onActivity,
-}: {
-  health: HealthResponse | null;
-  healthError: string | null;
-  onActivity?: () => void;
-}) {
+export function ChatWindow() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -58,28 +38,6 @@ export function ChatWindow({
   const stampRef = useRef<Map<string, string>>(new Map());
   // Yanit suresi: kullanicinin bekledigi sure, sunucunun raporladigi degil.
   const [durations, setDurations] = useState<Record<string, number>>({});
-
-  useSideStats(
-    healthError
-      ? [
-          { k: 'api', v: 'kapalı', tone: 'down' as const },
-          { k: 'çözüm', v: 'npm start' },
-        ]
-      : health
-        ? [
-            {
-              k: 'air-gapped',
-              v: health.airGapped ? 'aktif' : 'kapalı',
-              tone: health.airGapped ? ('ok' as const) : ('warn' as const),
-            },
-            {
-              k: 'model',
-              v: health.foundry.online ? kisaModel(health.foundry.activeModel) : 'çevrimdışı',
-              tone: health.foundry.online ? ('ok' as const) : ('warn' as const),
-            },
-          ]
-        : [{ k: 'durum', v: 'kontrol ediliyor…' }],
-  );
 
   const stamp = (id: string) => {
     let s = stampRef.current.get(id);
@@ -220,7 +178,6 @@ export function ChatWindow({
       setDurations((prev) => ({ ...prev, [answerId]: performance.now() - started }));
       setBusy(false);
       abortRef.current = null;
-      onActivity?.();
     }
   }
 

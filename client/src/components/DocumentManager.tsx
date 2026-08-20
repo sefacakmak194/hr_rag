@@ -40,13 +40,7 @@ function toBase64(file: File): Promise<string> {
   });
 }
 
-export default function DocumentManager({
-  user,
-  onChanged,
-}: {
-  user: SessionUser;
-  onChanged?: () => void;
-}) {
+export default function DocumentManager({ user }: { user: SessionUser }) {
   const [data, setData] = useState<DocumentsResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -148,7 +142,6 @@ export default function DocumentManager({
     setNote('');
     setEffectiveFrom('');
     await refresh();
-    onChanged?.();
   }
 
   /** Planlanmis (bekleyen) bir sürümden vazgeçme. */
@@ -189,7 +182,6 @@ export default function DocumentManager({
     }
     setBusy(false);
     await refresh();
-    onChanged?.();
   }
 
   /**
@@ -224,7 +216,6 @@ export default function DocumentManager({
     }
     setBusy(false);
     await refresh();
-    onChanged?.();
   }
 
   async function reindex() {
@@ -243,7 +234,6 @@ export default function DocumentManager({
     }
     setBusy(false);
     await refresh();
-    onChanged?.();
   }
 
   // Surum gecmisi acikken ekran tamamen ona ayrilir: fark okumak genislik ister.
@@ -255,7 +245,6 @@ export default function DocumentManager({
         accessLabel={data?.documents.find((d) => d.name === historyFor)?.accessLabel ?? 'genel'}
         onLabelChanged={() => {
           refresh();
-          onChanged?.();
         }}
         onClose={() => setHistoryFor(null)}
       />

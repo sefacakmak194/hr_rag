@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import ChatWindow from './components/ChatWindow';
 import DocumentManager from './components/DocumentManager';
 import AuthGate from './components/AuthGate';
@@ -6,32 +6,13 @@ import AuditPanel from './components/AuditPanel';
 import PolicyGapPanel from './components/PolicyGapPanel';
 import Sidebar, { type ViewKey } from './components/Sidebar';
 import { SideStatsContext, type SideStat } from './sideStats';
-import type { HealthResponse, SessionUser } from './types';
+import type { SessionUser } from './types';
 
 export default function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>('sohbet');
-  // Kenar cubugunun alt bolumu: acik ekran ne olcuyorsa onu yazar.
+  // Kenar cubugunun alt bolumu: acik ekran ne olcuyorsa onu yazar. Sohbet
+  // ekrani bilerek bos birakir — orada okunacak bir olcu yok.
   const [sideStats, setSideStats] = useState<SideStat[]>([]);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch('/api/health');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setHealth((await res.json()) as HealthResponse);
-      setError(null);
-    } catch (e) {
-      setError((e as Error).message);
-      setHealth(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, 15_000);
-    return () => clearInterval(t);
-  }, [refresh]);
 
   return (
     <AuthGate>
@@ -52,10 +33,8 @@ export default function App() {
                 stats={sideStats}
               />
 
-              {active === 'sohbet' && (
-                <ChatWindow health={health} healthError={error} onActivity={refresh} />
-              )}
-              {active === 'korpus' && <DocumentManager user={user} onChanged={refresh} />}
+              {active === 'sohbet' && <ChatWindow />}
+              {active === 'korpus' && <DocumentManager user={user} />}
               {active === 'bosluklar' && <PolicyGapPanel />}
               {active === 'denetim' && <AuditPanel user={user} />}
             </div>

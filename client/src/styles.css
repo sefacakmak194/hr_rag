@@ -953,7 +953,9 @@ code {
 }
 .audit-row--unanswered { box-shadow: inset 3px 0 0 var(--warn); }
 .audit-time { padding-left: 16px; font: 400 12px/1.5 'IBM Plex Mono', monospace; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.audit-user { font: 500 14px/1.5 'Public Sans', sans-serif; }
+/* overflow-wrap: kullanici adi e-posta olabiliyor; 100px'lik sutundan
+   tasip rol rozetinin uzerine biniyordu. */
+.audit-user { font: 500 14px/1.5 'Public Sans', sans-serif; overflow-wrap: anywhere; }
 .audit-duration { text-align: right; font: 400 12px/1.5 'IBM Plex Mono', monospace; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .audit-question { margin: 0; font: 400 17px/1.5 'Libre Baskerville', Georgia, serif; }
 .audit-question--hidden { font: 400 14px/1.6 'IBM Plex Mono', monospace; color: var(--muted); }

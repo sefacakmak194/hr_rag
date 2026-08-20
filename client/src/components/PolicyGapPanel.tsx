@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSideStats } from '../sideStats';
 import type { GapCluster, GapReport } from '../types';
 
 /**
@@ -20,7 +21,7 @@ export default function GapClusterPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/policy-gaps');
+      const res = await fetch('/api/reports/policy-gaps');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData((await res.json()) as GapReport);
       setError(null);
@@ -64,11 +65,20 @@ export default function GapClusterPanel() {
   const weeks = data?.byWeek ?? [];
   const max = Math.max(1, ...weeks.map((w) => w.count));
 
+  useSideStats(
+    data
+      ? [
+          { k: 'yanıtsız', v: String(data.totalQuestions) },
+          { k: 'saklama', v: `${data.retentionWeeks} hafta` },
+        ]
+      : [],
+  );
+
   return (
     <div className="view">
       <header className="view-head">
         <div>
-          <div className="eyebrow">03 / Boşluklar</div>
+          <div className="eyebrow">03 / Cevaplanamayanlar</div>
           <h2 className="view-title">
             {data
               ? `${data.totalQuestions} yanıtsız soru · ${data.clusters.length} konu · ${weeks.length} hafta`
@@ -136,14 +146,6 @@ export default function GapClusterPanel() {
             ))}
           </div>
         )}
-
-        <p className="note" style={{ marginTop: 48 }}>
-          Konu gruplaması bir <strong>yardımcıdır, sınıflandırıcı değil</strong>. Ölçüldü: aynı
-          konunun farklı ifadeleri ile farklı konular arasındaki benzerlik dağılımları örtüşüyor.
-          Eşik <strong>fazla bölme</strong> yönünde seçildi — aynı boşluğa işaret eden iki konu
-          ayrı satırda görünebilir, bu yüzden “benzer” bağlantısı gösteriliyor. Kayıtlar{' '}
-          <strong>kim sorduğu bilgisini taşımaz</strong> ve 52 hafta sonra silinir.
-        </p>
       </div>
     </div>
   );

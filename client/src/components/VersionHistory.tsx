@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSideStats } from '../sideStats';
 import type {
   DiffResponse,
   DocumentVersion,
@@ -64,6 +65,19 @@ export default function VersionHistory({
   // Karsilastirma icin secilen surumler. En fazla iki tane tutulur; ucuncu
   // secim en eskisini duserur — "once temizle sonra sec" adimini kaldirir.
   const [picked, setPicked] = useState<number[]>([]);
+
+  useSideStats(
+    data
+      ? [
+          { k: 'sürüm', v: String(data.versions.length) },
+          {
+            k: 'yürürlükte',
+            v: data.currentVersion ? `s${data.currentVersion}` : '—',
+            tone: data.currentVersion ? ('ok' as const) : undefined,
+          },
+        ]
+      : [],
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -140,7 +154,7 @@ export default function VersionHistory({
     <div className="view">
       <header className="view-head">
         <div>
-          <div className="eyebrow">02 / Korpus / Sürüm geçmişi</div>
+          <div className="eyebrow">02 / Kaynaklar / Sürüm geçmişi</div>
           <h2 className="view-title view-title--file">{doc}</h2>
         </div>
 

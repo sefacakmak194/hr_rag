@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import IntegrityPanel from './IntegrityPanel';
-import type { AuditResponse, AuditRow, SessionUser } from '../types';
+import { useSideStats } from '../sideStats';
+import type { AuditResponse, AuditRow, IntegrityReport, SessionUser } from '../types';
 
 /**
  * Denetim kaydi ekrani.
@@ -17,6 +18,21 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(false);
+  // IntegrityPanel'den yukari verilir; kenar cubugu zincirin durumunu yazar.
+  const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
+
+  useSideStats([
+    ...(integrity
+      ? [
+          {
+            k: 'zincir',
+            v: integrity.ok ? 'bütün' : 'kırık',
+            tone: integrity.ok ? ('ok' as const) : ('down' as const),
+          },
+        ]
+      : []),
+    ...(data ? [{ k: 'kapsam', v: data.scope === 'tumu' ? 'tümü' : 'kendi' }] : []),
+  ]);
 
   const load = useCallback(async (username?: string) => {
     setLoading(true);
@@ -111,7 +127,7 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
 
       <div className="view-body">
         {/* Butunluk paneli yalnizca yoneticide; sunucu da 403 ile zorluyor. */}
-        {user.role === 'yonetici' && <IntegrityPanel />}
+        {user.role === 'yonetici' && <IntegrityPanel onReport={setIntegrity} />}
 
         {data && (
           <div className="stats">
@@ -171,11 +187,6 @@ export default function AuditPanel({ user }: { user: SessionUser }) {
             ))}
           </div>
         )}
-
-        <p className="note" style={{ marginTop: 40 }}>
-          Kayıtlar <strong>değiştirilemez ve silinemez</strong>; bu kısıt veritabanı düzeyinde
-          zorlanır. Soru metni yalnızca kısıtlı bir dokümana erişildiğinde saklanır.
-        </p>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import VersionHistory from './VersionHistory';
+import { useSideStats } from '../sideStats';
 import type { CorpusAudit, DocumentInfo, DocumentsResponse, SessionUser } from '../types';
 
 /**
@@ -11,6 +12,14 @@ import type { CorpusAudit, DocumentInfo, DocumentsResponse, SessionUser } from '
  */
 
 const ACCEPT = '.md,.docx,.pdf';
+
+const dropzoneMetni = (
+  <>
+    Markdown, Word veya PDF dosyalarını buraya sürükleyin
+    <br />
+    ya da tıklayın
+  </>
+);
 
 function prettySize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -52,6 +61,15 @@ export default function DocumentManager({
   const [note, setNote] = useState('');
   const [effectiveFrom, setEffectiveFrom] = useState('');
   const [historyFor, setHistoryFor] = useState<string | null>(null);
+
+  useSideStats(
+    data && !historyFor
+      ? [
+          { k: 'indeks', v: `${data.indexedChunks} parça` },
+          { k: 'doküman', v: String(data.documents.length) },
+        ]
+      : [],
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -244,11 +262,15 @@ export default function DocumentManager({
     );
   }
 
+  // Yan rayda gosterilecek bir sey yoksa 320px'lik bos bir sutun birakmak
+  // yerine tablo tum genisligi alir.
+  const yanRayDolu = Boolean(data?.pending.length) || Boolean(audit?.findings.length);
+
   return (
     <div className="view">
       <header className="view-head">
         <div>
-          <div className="eyebrow">02 / Korpus</div>
+          <div className="eyebrow">02 / Kaynaklar</div>
           <h2 className="view-title">
             {data
               ? `${data.documents.length} doküman · ${data.indexedChunks} parça`
@@ -263,7 +285,10 @@ export default function DocumentManager({
       </header>
 
       <div className="view-body view-body--flush">
-        <div className="corpus" style={{ overflowY: 'auto' }}>
+        <div
+          className={`corpus${yanRayDolu ? '' : ' corpus--tek'}`}
+          style={{ overflowY: 'auto' }}
+        >
           <div className="corpus-main">
             <div
               className={`dropzone${dragging ? ' dropzone--active' : ''}${busy ? ' dropzone--busy' : ''}`}
@@ -292,7 +317,7 @@ export default function DocumentManager({
               />
               {busy
                 ? 'İndeks kuruluyor…'
-                : 'Markdown, Word veya PDF dosyalarını buraya sürükleyin · ya da tıklayın'}
+                : dropzoneMetni}
             </div>
 
             {/* Sürüm üstverisi. Yükleme öncesinde doldurulur; boş bırakılabilir. */}
@@ -315,10 +340,6 @@ export default function DocumentManager({
                   disabled={busy}
                 />
               </label>
-              <small>
-                Tarih ileri bir gün ise doküman korpusa <strong>o gün</strong> alınır; o zamana
-                kadar yanıtlar yürürlükteki sürüme dayanmayı sürdürür.
-              </small>
             </div>
 
             {notice && <p className={`notice notice--${notice.kind}`}>{notice.text}</p>}
@@ -390,6 +411,7 @@ export default function DocumentManager({
             </div>
           </div>
 
+          {yanRayDolu && (
           <div className="corpus-side">
             {data && data.pending.length > 0 && (
               <div className="side-block">
@@ -430,7 +452,7 @@ export default function DocumentManager({
             {audit && audit.findings.length > 0 && (
               <div className="side-block">
                 <div className="side-block-head">
-                  <span className="label">Korpus sağlığı</span>
+                  <span className="label">Kaynak sağlamlığı</span>
                   <span className="side-block-counts">
                     {audit.summary.yuksek > 0 && (
                       <b className="count--high">{audit.summary.yuksek} çelişki</b>
@@ -459,6 +481,7 @@ export default function DocumentManager({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

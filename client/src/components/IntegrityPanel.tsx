@@ -12,7 +12,12 @@ import type { ArchiveItem, ArchiveVerification, IntegrityReport } from '../types
  * "dokunulduysa gorunur" der. Arsivi bu makineden CIKARMAK, geriye donuk
  * degistirmeyi imkansiz kilan tek adimdir.
  */
-export default function IntegrityPanel() {
+export default function IntegrityPanel({
+  onReport,
+}: {
+  /** Zincir durumu kenar cubugunda da gorunsun diye yukari verilir. */
+  onReport?: (report: IntegrityReport) => void;
+}) {
   const [data, setData] = useState<IntegrityReport | null>(null);
   const [archives, setArchives] = useState<ArchiveItem[]>([]);
   const [verify, setVerify] = useState<ArchiveVerification | null>(null);
@@ -27,13 +32,15 @@ export default function IntegrityPanel() {
         fetch('/api/audit/archives'),
       ]);
       if (!i.ok) throw new Error(`HTTP ${i.status}`);
-      setData((await i.json()) as IntegrityReport);
+      const report = (await i.json()) as IntegrityReport;
+      setData(report);
+      onReport?.(report);
       if (a.ok) setArchives(((await a.json()).arsivler ?? []) as ArchiveItem[]);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [onReport]);
 
   useEffect(() => {
     load();
@@ -152,15 +159,6 @@ export default function IntegrityPanel() {
                 arşivle karşılaştırın.
               </p>
             )}
-
-            <p className="rule-note" style={{ marginTop: 24 }}>
-              Arşiv üretmek tek başına yetmez —{' '}
-              <strong>asıl koruma arşivi bu makineden çıkarmaktır.</strong> Dışarı çıkmış bir
-              arşiv geriye dönük değiştirilemez. Doğrulama da başka bir makinede yapılmalı:
-            </p>
-            <code className="integrity-code code">
-              npm run verify-archive -- &lt;arşiv.json&gt; &lt;açık-anahtar.pem&gt;
-            </code>
 
             {archives.length > 0 && (
               <div style={{ marginTop: 28 }}>

@@ -1,6 +1,5 @@
-import type { HealthResponse, SessionUser } from '../types';
-import { ThemeToggle, type Theme } from '../theme';
-import StatusIndicator from './StatusIndicator';
+import type { SessionUser } from '../types';
+import type { SideStat } from '../sideStats';
 
 export type ViewKey = 'sohbet' | 'korpus' | 'bosluklar' | 'denetim';
 
@@ -14,9 +13,9 @@ const ROLE_LABEL: Record<SessionUser['role'], string> = {
  * Kalici kenar cubugu.
  *
  * Panel ac/kapa dugmeleri yerine tek bir gezinme var: her ekran tam genislik
- * kullanir. Durum bilgisi ust baslikta rozet olarak degil, burada okunabilir
- * satirlar halinde durur — sorulacak soru "sistem hazir mi", cevabi bir
- * yerde sabit durmali.
+ * kullanir. Altta duran olcu satirlari sabit degil, ACIK EKRANIN olcusu —
+ * hangi ekranda olursa olsun sorulacak soru "burada durum ne", cevabi ayni
+ * yerde durmali.
  */
 export default function Sidebar({
   view,
@@ -24,30 +23,19 @@ export default function Sidebar({
   items,
   user,
   onLogout,
-  health,
-  error,
-  theme,
-  onTheme,
+  stats,
 }: {
   view: ViewKey;
   onView: (v: ViewKey) => void;
   items: { key: ViewKey; label: string }[];
   user: SessionUser;
   onLogout: () => void;
-  health: HealthResponse | null;
-  error: string | null;
-  theme: Theme;
-  onTheme: (t: Theme) => void;
+  stats: SideStat[];
 }) {
   return (
     <aside className="side">
       <div className="side-brand">
-        <div className="eyebrow">Kurumsal</div>
-        <div className="side-brand-name">
-          İK &amp; Mevzuat
-          <br />
-          Asistanı
-        </div>
+        <div className="side-brand-name">İnsan Kaynakları Asistanı</div>
       </div>
 
       <nav className="side-nav">
@@ -65,7 +53,12 @@ export default function Sidebar({
       </nav>
 
       <div className="side-foot">
-        <StatusIndicator health={health} error={error} />
+        {stats.map((s) => (
+          <div className="side-row" key={s.k}>
+            <span className="side-row-k">{s.k}</span>
+            <span className={`side-row-v${s.tone ? ` side-row-v--${s.tone}` : ''}`}>{s.v}</span>
+          </div>
+        ))}
 
         <div className="side-user">
           <div>
@@ -76,8 +69,6 @@ export default function Sidebar({
             Çıkış
           </button>
         </div>
-
-        <ThemeToggle theme={theme} onChange={onTheme} />
       </div>
     </aside>
   );

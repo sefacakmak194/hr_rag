@@ -12,14 +12,13 @@ function prettyDoc(doc: string): string {
 export function CitationBadge({ citation }: { citation: Citation }) {
   // Kanit cumlesi varsa alinti acilabilir olur: kullanici cevabin DAYANDIGI
   // cumleyi dokumana gitmeden gorur. Kanit yoksa duz satir olarak kalir.
+  // Skor bilerek yazilmiyor: okuyucunun karari "hangi madde", "0.87" degil.
+  // Sayi guven veriyormus gibi duruyor ama okuyucu onu yorumlayamaz.
   const body = (
     <>
       <span className="cite-doc">{prettyDoc(citation.doc)}</span>
       <span className="cite-sep">→</span>
       <span className="cite-section">{citation.section}</span>
-      {citation.score !== undefined && (
-        <span className="cite-score">{citation.score.toFixed(2)}</span>
-      )}
     </>
   );
 

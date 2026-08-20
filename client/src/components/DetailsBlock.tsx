@@ -20,7 +20,7 @@ export default function DetailsBlock({ details }: { details: AnswerDetails }) {
   const { primary, related } = details;
 
   return (
-    <details className="dayanak">
+    <details className="dayanak" open>
       <summary>
         <span className="dayanak-label">Dayanak</span>
         <span className="dayanak-src">

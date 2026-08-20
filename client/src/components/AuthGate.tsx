@@ -79,28 +79,9 @@ export default function AuthGate({
     <div className="auth">
       <div className="auth-aside">
         <div>
-          <div className="eyebrow">Kurumsal</div>
-          <h1>
-            İK &amp; Mevzuat
-            <br />
-            Asistanı
-          </h1>
+          <div className="eyebrow">Yapay zeka tabanlı</div>
+          <h1>İnsan Kaynakları Asistanı</h1>
         </div>
-
-        <dl className="auth-facts">
-          <div className="auth-fact">
-            <dt>yerel</dt>
-            <dd>%100</dd>
-          </div>
-          <div className="auth-fact">
-            <dt>veri sızıntısı</dt>
-            <dd>sıfır</dd>
-          </div>
-          <div className="auth-fact">
-            <dt>kaynak gösterimi</dt>
-            <dd>madde düzeyi</dd>
-          </div>
-        </dl>
       </div>
 
       <div className="auth-main">
@@ -171,10 +152,6 @@ export default function AuthGate({
             <button type="submit" className="btn btn--solid" disabled={busy}>
               {busy ? 'Gönderiliyor…' : setup ? 'Yönetici hesabını oluştur' : 'Giriş yap'}
             </button>
-
-            <p className="auth-foot">
-              Kimlik doğrulaması bu makinede yapılır. Parolanız hiçbir yere gönderilmez.
-            </p>
           </form>
         )}
       </div>

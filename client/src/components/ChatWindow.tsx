@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { CitationList } from './CitationBadge';
 import DetailsBlock from './DetailsBlock';
-import type { AnswerBasis, AnswerDetails, Citation, Message } from '../types';
+import { useSideStats } from '../sideStats';
+import type { AnswerBasis, AnswerDetails, Citation, HealthResponse, Message } from '../types';
 
 const SUGGESTIONS = [
   'Ne iş yaparsın?',
@@ -10,10 +11,20 @@ const SUGGESTIONS = [
   'Kreş desteği ne kadar?',
   'İstifa edersem ihbar süresi ne kadar?',
   'Ne konuşuyorduk?',
-  'Şirket bana özel araç tahsisi yapıyor mu?',
 ];
 
 const uid = () => Math.random().toString(36).slice(2);
+
+/**
+ * Model adindaki donanim eki kenar cubuguna sigmiyor.
+ *
+ * "qwen2.5-1.5b-instruct-cuda-gpu" iki satira tasiyor; ayirt edici kisim
+ * bastaki ad, sondaki ek ayni makinede zaten sabit.
+ */
+function kisaModel(ad: string | null): string {
+  if (!ad) return 'bağlı';
+  return ad.replace(/-(cuda|generic|dml|qnn)?-?(gpu|cpu|npu)$/i, '');
+}
 
 /** Oturum kimligi sekme omru boyunca sabit kalir; sunucu hafizasi buna baglanir. */
 const SESSION_KEY = 'phr-session-id';
@@ -29,7 +40,15 @@ function getSessionId(): string {
 const fmtTime = (d: Date) =>
   d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
+export function ChatWindow({
+  health,
+  healthError,
+  onActivity,
+}: {
+  health: HealthResponse | null;
+  healthError: string | null;
+  onActivity?: () => void;
+}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -37,6 +56,30 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
   const abortRef = useRef<AbortController | null>(null);
   // Turlarin saati: mesaj nesnesi sunucudan gelmiyor, ilk gorulduğu an yazilir.
   const stampRef = useRef<Map<string, string>>(new Map());
+  // Yanit suresi: kullanicinin bekledigi sure, sunucunun raporladigi degil.
+  const [durations, setDurations] = useState<Record<string, number>>({});
+
+  useSideStats(
+    healthError
+      ? [
+          { k: 'api', v: 'kapalı', tone: 'down' as const },
+          { k: 'çözüm', v: 'npm start' },
+        ]
+      : health
+        ? [
+            {
+              k: 'air-gapped',
+              v: health.airGapped ? 'aktif' : 'kapalı',
+              tone: health.airGapped ? ('ok' as const) : ('warn' as const),
+            },
+            {
+              k: 'model',
+              v: health.foundry.online ? kisaModel(health.foundry.activeModel) : 'çevrimdışı',
+              tone: health.foundry.online ? ('ok' as const) : ('warn' as const),
+            },
+          ]
+        : [{ k: 'durum', v: 'kontrol ediliyor…' }],
+  );
 
   const stamp = (id: string) => {
     let s = stampRef.current.get(id);
@@ -63,12 +106,15 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
     const trimmed = question.trim();
     if (!trimmed || busy) return;
 
+    const answerId = uid();
+    const started = performance.now();
+
     setInput('');
     setBusy(true);
     setMessages((prev) => [
       ...prev,
       { id: uid(), role: 'user', content: trimmed },
-      { id: uid(), role: 'assistant', content: '', streaming: true, citations: [] },
+      { id: answerId, role: 'assistant', content: '', streaming: true, citations: [] },
     ]);
 
     const controller = new AbortController();
@@ -171,6 +217,7 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
         patchLast((m) => ({ ...m, streaming: false }));
       }
     } finally {
+      setDurations((prev) => ({ ...prev, [answerId]: performance.now() - started }));
       setBusy(false);
       abortRef.current = null;
       onActivity?.();
@@ -185,6 +232,7 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
     }).catch(() => {});
     sessionStorage.removeItem(SESSION_KEY);
     stampRef.current.clear();
+    setDurations({});
     setMessages([]);
   }
 
@@ -214,8 +262,8 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
             {messages.length === 0 && (
               <div className="chat-empty">
                 <p>
-                  Yanıtlar yalnızca kurumsal doküman korpusundan üretilir ve kaynak maddesiyle
-                  birlikte gösterilir. Hiçbir veri cihazdan çıkmaz.
+                  Yanıtlar yalnızca kurumsal doküman kaynaklarında üretilir ve kaynak maddesiyle
+                  birlikte gösterilir.
                 </p>
                 <div className="suggest">
                   {SUGGESTIONS.map((s, i) => (
@@ -237,7 +285,13 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
                 <div className="turn-meta">
                   {m.role === 'user' ? 'Siz' : 'Asistan'}
                   <br />
-                  <span className="turn-time">{stamp(m.id)}</span>
+                  <span className="turn-time">
+                    {m.role === 'user'
+                      ? stamp(m.id)
+                      : durations[m.id] !== undefined
+                        ? `${(durations[m.id] / 1000).toFixed(1)}s`
+                        : ''}
+                  </span>
                 </div>
 
                 <div className="turn-body">
@@ -255,9 +309,6 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
                     {m.streaming && m.content && <span className="caret" />}
                   </div>
 
-                  {m.role === 'assistant' && !m.streaming && m.basis && (
-                    <BasisNote basis={m.basis} />
-                  )}
                   {m.role === 'assistant' && !m.streaming && m.details && (
                     <DetailsBlock details={m.details} />
                   )}
@@ -290,29 +341,6 @@ export function ChatWindow({ onActivity }: { onActivity?: () => void }) {
         </div>
       </div>
     </div>
-  );
-}
-
-/**
- * "Bu yanıt … tarihli sürüme dayanmaktadır."
- *
- * Neden gerekli: mevzuat değişir. Bugünkü doğru yanıt, üç ay sonra ekran
- * görüntüsü olarak dolaşırken yanlış hale gelir. Yürürlük tarihini yanıtın
- * yanına yazmak, cevabı zaman içinde konumlandırır — kullanıcı "acaba bu
- * güncel mi" diye sormak zorunda kalmaz.
- */
-function BasisNote({ basis }: { basis: AnswerBasis }) {
-  const date = new Date(basis.effectiveFrom).toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-
-  return (
-    <p className="basis" title={`${basis.doc} · sürüm ${basis.version}`}>
-      Bu yanıt <strong>{date}</strong> tarihinde yürürlüğe giren {basis.version}. sürüme
-      dayanmaktadır.
-    </p>
   );
 }
 

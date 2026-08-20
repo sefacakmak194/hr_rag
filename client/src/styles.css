@@ -1,6 +1,7 @@
 /* ==================================================================
-   Kurumsal İK & Mevzuat Asistanı — tasarım sistemi
-   İki tema: fildişi (varsayılan) ve koyu. Geçiş <html data-theme="…">.
+   İnsan Kaynakları Asistanı — tasarım sistemi
+   Tek görsel dünya: fildişi kâğıt üzerine kahve mürekkep. Koyu tema yok —
+   tasarım tek temaya bağlanınca kontrast ve doku bir kez ayarlanıyor.
    Palet: #7B3F00 · #F2D3BC · #FFFFF0
    Tipografi: Libre Baskerville (başlık) · Public Sans (gövde) · IBM Plex Mono (veri)
    ================================================================== */
@@ -201,8 +202,7 @@
 }
 
 /* ---------- belirteçler ---------- */
-:root,
-[data-theme='fildisi'] {
+:root {
   --paper: #FFFFF0;
   --paper-2: #FCF6EE;
   --paper-3: #F9EBD9;
@@ -230,36 +230,6 @@
   --danger-tint: rgba(155, 44, 36, 0.1);
 
   color-scheme: light;
-}
-
-[data-theme='koyu'] {
-  --paper: #17110C;
-  --paper-2: #1E1610;
-  --paper-3: #241A12;
-  --peach: #3A2415;
-  --peach-hover: #452C1A;
-
-  --ink: #F5EADF;
-  --ink-2: #E8DACB;
-  --ink-3: #C4B2A0;
-  --muted: #9A8571;
-  --faint: #7C6853;
-
-  --rule: #33261C;
-  --rule-strong: #4A382A;
-
-  --accent: #E8B98C;
-  --accent-hover: #F2CFAC;
-  --accent-ink: #1A120C;
-  --tint: rgba(232, 185, 140, 0.07);
-
-  --ok: #7FC9A3;
-  --warn: #E0B063;
-  --danger: #E08C82;
-  --ok-tint: rgba(127, 201, 163, 0.14);
-  --danger-tint: rgba(224, 140, 130, 0.12);
-
-  color-scheme: dark;
 }
 
 /* ---------- taban ---------- */
@@ -392,7 +362,7 @@ input[type='checkbox'] { accent-color: var(--accent); }
 
 .side-brand { padding: 36px 28px 30px; }
 .side-brand-name {
-  margin: 14px 0 0;
+  margin: 0;
   font: 400 23px/1.2 'Libre Baskerville', Georgia, serif;
   color: var(--ink);
 }
@@ -422,10 +392,6 @@ input[type='checkbox'] { accent-color: var(--accent); }
 
 .side-foot { margin-top: auto; padding: 26px 28px; border-top: 1px solid var(--rule); }
 
-/* Durum listesi <dl> — tarayicinin varsayilan margin'i kenar cubugunda
-   bosluk kaydiriyordu. */
-.side-status { margin: 0; }
-
 .side-row {
   display: flex;
   justify-content: space-between;
@@ -433,11 +399,15 @@ input[type='checkbox'] { accent-color: var(--accent); }
   padding-bottom: 12px;
   font: 400 11px/1.3 'IBM Plex Mono', monospace;
 }
-.side-row dt, .side-row-k { color: var(--muted); }
+.side-row-k { color: var(--muted); }
 .side-row-v { color: var(--ink); text-align: right; overflow-wrap: anywhere; }
 .side-row-v--ok { color: var(--ok); }
 .side-row-v--warn { color: var(--warn); }
 .side-row-v--down { color: var(--danger); }
+
+/* Olcu satiri yoksa side-foot'un kendi cizgisi zaten var; ikinci cizgi
+   kullanici satirinin uzerinde catallanmis gorunuyordu. */
+.side-foot > .side-user:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
 .side-user {
   display: flex;
@@ -456,25 +426,6 @@ input[type='checkbox'] { accent-color: var(--accent); }
   text-transform: uppercase;
   color: var(--accent);
 }
-
-.theme-toggle {
-  display: flex;
-  width: 100%;
-  margin-top: 18px;
-  border: 1px solid var(--rule-strong);
-}
-.theme-toggle button {
-  flex: 1;
-  padding: 9px 0;
-  background: none;
-  border: none;
-  color: var(--muted);
-  font: 600 9.5px/1 'Public Sans', sans-serif;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.theme-toggle button[aria-pressed='true'] { background: var(--peach); color: var(--ink); }
 
 /* görünüm */
 .view { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -584,7 +535,7 @@ code {
 /* ==================================================================
    Giriş ekranı
    ================================================================== */
-.auth { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); height: 100%; }
+.auth { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); height: 100%; }
 
 .auth-aside {
   background: var(--peach);
@@ -597,19 +548,6 @@ code {
 .auth-aside .eyebrow { color: var(--accent); }
 .auth-aside h1 { margin: 22px 0 0; font-size: 46px; line-height: 1.14; letter-spacing: -0.6px; }
 
-.auth-facts { border-top: 1px solid var(--rule-strong); }
-.auth-fact {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--rule);
-  font: 400 12px/1 'IBM Plex Mono', monospace;
-}
-.auth-fact:last-child { border-bottom: none; }
-.auth-fact dt { color: var(--accent); }
-.auth-fact dd { margin: 0; }
-
 .auth-main { display: grid; place-items: center; padding: 64px; overflow-y: auto; }
 
 .auth-form { width: min(460px, 100%); display: flex; flex-direction: column; }
@@ -617,14 +555,6 @@ code {
 .auth-form .field { margin-bottom: 32px; }
 .auth-form .btn { height: 60px; margin-top: 12px; font-size: 12px; letter-spacing: 2px; }
 .auth-hint { margin: 0 0 24px; font-size: 12px; line-height: 1.7; color: var(--muted); }
-.auth-foot {
-  margin: 28px 0 0;
-  padding-top: 22px;
-  border-top: 1px solid var(--rule);
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--muted);
-}
 .auth-loading { margin: 0; font: 400 13px/1.6 'IBM Plex Mono', monospace; color: var(--muted); }
 
 /* ==================================================================
@@ -774,7 +704,6 @@ code {
 .cite-doc { font: 400 12px/1.4 'IBM Plex Mono', monospace; color: var(--ink-3); }
 .cite-sep { color: var(--accent); }
 .cite-section { flex: 1; font: 500 13px/1.4 'Public Sans', sans-serif; }
-.cite-score { font: 500 12px/1 'IBM Plex Mono', monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
 .cite-evidence {
   margin: 0;
   padding: 16px;
@@ -807,6 +736,7 @@ code {
    Korpus
    ================================================================== */
 .corpus { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.corpus--tek { grid-template-columns: minmax(0, 1fr); }
 .corpus-main { padding: 48px 40px 56px 56px; min-width: 0; }
 .corpus-side { border-left: 1px solid var(--rule); padding: 48px 40px; }
 
@@ -825,8 +755,6 @@ code {
 .dropzone--busy { cursor: progress; opacity: 0.6; }
 
 .corpus-meta { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 32px; margin-top: 36px; }
-.corpus-meta small { grid-column: 1 / -1; font-size: 12px; line-height: 1.7; color: var(--muted); }
-.corpus-meta small strong { color: var(--ink-2); }
 
 .notice {
   margin: 32px 0 0;
@@ -1000,7 +928,6 @@ code {
   overflow-wrap: anywhere;
 }
 .integrity-archives span { flex: none; font: 400 11px/1.4 'IBM Plex Mono', monospace; color: var(--muted); }
-.integrity-code { display: block; margin-top: 12px; margin-left: 20px; }
 .integrity-path { margin: 0; font: 400 11px/1.6 'IBM Plex Mono', monospace; color: var(--muted); overflow-wrap: anywhere; }
 .integrity-error { margin: 0; padding: 12px 0; color: var(--danger); font-size: 12.5px; }
 .integrity-issue { color: var(--danger) !important; }
@@ -1016,7 +943,7 @@ code {
 .audit-filter .input { flex: 1; min-width: 0; }
 
 .audit { margin-top: 48px; }
-.audit .tbl-head, .audit-row { grid-template-columns: 170px 110px 84px minmax(0, 1fr) 64px; gap: 24px; }
+.audit .tbl-head, .audit-row { grid-template-columns: 170px 100px 84px minmax(0, 1fr) 64px; gap: 24px; }
 .audit-row {
   display: grid;
   align-items: start;
@@ -1051,7 +978,9 @@ code {
    Politika boşlukları
    ================================================================== */
 .trend { display: flex; align-items: flex-end; gap: 10px; height: 140px; padding-bottom: 12px; border-bottom: 1px solid var(--accent); }
-.trend-bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 10px; height: 100%; }
+/* max-width: tek haftalik veride tam genislige yayilan bir blok, sutun
+   grafigi degil duvar gibi duruyordu. */
+.trend-bar { flex: 1; max-width: 108px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 10px; height: 100%; }
 .trend-count { font: 500 11px/1 'IBM Plex Mono', monospace; color: var(--muted); }
 .trend-fill { width: 100%; min-height: 2px; background: var(--peach); border-top: 2px solid var(--accent); }
 .trend-bar--max .trend-count { color: var(--ink); }

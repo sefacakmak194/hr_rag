@@ -18,6 +18,7 @@ import {
   getSession,
   recordTurn,
   clearSession,
+  sessionKey,
   resolveQuery,
   summarizeSession,
 } from '../services/conversation.service.js';
@@ -108,9 +109,11 @@ function firstSentences(text: string, count: number): string {
 }
 
 /** Oturumu sifirlar ("yeni sohbet"). */
-router.post('/session/reset', (req: Request, res: Response) => {
-  const { sessionId } = req.body ?? {};
-  if (typeof sessionId === 'string' && sessionId) clearSession(sessionId);
+router.post('/session/reset', requireAuth, (req: Request, res: Response) => {
+  // requireAuth gectiyse kimlik kesin var. Kimliksiz birakildiginda baskasinin
+  // sessionId'sini bilen herkes o oturumu silebiliyordu.
+  const principal = req.principal as Principal;
+  clearSession(sessionKey(principal.userId, req.body?.sessionId));
   res.json({ ok: true });
 });
 
@@ -153,7 +156,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  const session = getSession(typeof sessionId === 'string' && sessionId ? sessionId : 'default');
+  const session = getSession(sessionKey(principal.userId, sessionId));
 
   /**
    * "Dayanak" blogu — yanitin altinda gosterilen TAM madde metni.

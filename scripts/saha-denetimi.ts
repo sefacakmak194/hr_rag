@@ -20,7 +20,13 @@
  *
  * Kullanim:
  *   npx tsx ../scripts/saha-denetimi.ts            # yalitilmis, tam set
- *   npx tsx ../scripts/saha-denetimi.ts --hizli    # LLM yok, yalnizca kapi
+ *
+ * `--hizli` KALDIRILDI. "LLM yok, yalnizca kapi" diye duruyordu ama kapiyi da
+ * calistirmiyordu: sorguyu hic gondermeden bos yanit uretiyordu. Bos yanit
+ * "bilgi bulunmamaktadir" imzasini tasimadigi icin her soru CEVAPLANDI
+ * sayiliyor, betik 0 bosluk raporluyordu — tam da bu dosyanin asagida uyardigi
+ * sessiz yanilginin ayni si. Yalnizca retrieval olcmek icin `npm run sweep`
+ * var; o gercekten kapidan geciriyor.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,7 +39,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const KOK = path.resolve(HERE, '..');
 const CIKTI = path.join(KOK, 'data', 'saha');
 
-const hizli = process.argv.includes('--hizli');
+if (process.argv.includes('--hizli')) {
+  console.error(
+    '--hizli kaldırıldı: ölçmeden "cevaplandı" sayıyordu.\n' +
+      'Yalnızca retrieval ölçmek için: npm run sweep',
+  );
+  process.exit(2);
+}
 
 /** Alaka kapisinin sabit yaniti — cevapsizligin imzasi. */
 const YOK_IMZASI = 'bilgi bulunmamaktadır';
@@ -87,9 +99,18 @@ for (const s of sahaSorulari) {
     sonAlan = s.alan;
   }
 
-  const r = hizli
-    ? { answer: '', citations: [], seconds: 0, error: undefined, replaced: false }
-    : await ask(BASE, s.soru, `saha-${s.id}-${Date.now()}`, cookie);
+  // AKTARIM HATASINDA BIR KEZ YENIDEN DENENIR — VE BU, OLCUMUN DOGRULUGU ICIN SART.
+  //
+  // Olculdu: Foundry daemon'i 100 sorunun ortasinda coktu ve kalan 97 soru bos
+  // yanit dondu. Bos yanit "bilgi bulunmamaktadir" imzasini TASIMADIGI icin
+  // betik onlari CEVAPLANDI sayiyordu; yani daemon cokusu olcumu oldugundan
+  // IYI gosteriyordu (0 bosluk raporlandi). Yeniden deneme ve asagidaki ayri
+  // sayim bu sessiz yanilgiyi kapatir.
+  let r = await ask(BASE, s.soru, `saha-${s.id}-${Date.now()}`, cookie);
+  if (r.error) {
+    await new Promise((res) => setTimeout(res, 3000));
+    r = await ask(BASE, s.soru, `saha-${s.id}-yeniden-${Date.now()}`, cookie);
+  }
 
   const dusukCevap = r.answer.toLocaleLowerCase('tr');
   const bosluk = dusukCevap.includes(YOK_IMZASI.toLocaleLowerCase('tr'));
@@ -124,18 +145,20 @@ const bekleniyorCevap = sonuclar.filter((s) => s.beklenen === 'cevaplanmali');
 const bekleniyorRed = sonuclar.filter((s) => s.beklenen === 'kapsamDisi');
 
 /** BOSLUK: cevaplanmasi beklenen ama sabit "bilgi yok" donen. */
-const bosluklar = bekleniyorCevap.filter((s) => s.bosluk);
+const bosluklar = bekleniyorCevap.filter((s) => s.bosluk && !s.hata);
 /** SIZINTI: kapsam disi olmasi gereken ama cevaplanan. */
 const sizintilar = bekleniyorRed.filter((s) => !s.bosluk);
 /** OLGU HATASI: cevap geldi ama beklenen sayi yanitta yok. */
-const olguHatalari = bekleniyorCevap.filter((s) => !s.bosluk && s.eksik.length);
+const olguHatalari = bekleniyorCevap.filter((s) => !s.bosluk && !s.hata && s.eksik.length);
 const hatalar = sonuclar.filter((s) => s.hata);
 
-const cevaplanan = bekleniyorCevap.length - bosluklar.length;
-const oran = ((cevaplanan / bekleniyorCevap.length) * 100).toFixed(1);
+/** Aktarim hatasi alan sorular OLCUM DISI — yanit gelmedigi icin ne cevaplandi ne cevapsiz sayilir. */
+const olculebilir = bekleniyorCevap.filter((s) => !s.hata);
+const cevaplanan = olculebilir.length - bosluklar.length;
+const oran = ((cevaplanan / Math.max(olculebilir.length, 1)) * 100).toFixed(1);
 
 console.log('\n  ' + '='.repeat(64));
-console.log(`  Cevaplanmasi beklenen : ${bekleniyorCevap.length}`);
+console.log(`  Cevaplanmasi beklenen : ${bekleniyorCevap.length}` + (hatalar.length ? `  (olculebilen ${olculebilir.length})` : ''));
 console.log(`  Cevaplanan            : ${cevaplanan}  (%${oran})`);
 console.log(`  BOSLUK (cevapsiz)     : ${bosluklar.length}`);
 console.log(`  SIZINTI (kapsam disi) : ${sizintilar.length} / ${bekleniyorRed.length}`);
@@ -143,7 +166,7 @@ console.log(`  Olgu hatasi           : ${olguHatalari.length}`);
 if (hatalar.length) console.log(`  Aktarim hatasi        : ${hatalar.length}`);
 
 const alanaGore = new Map<string, { toplam: number; bosluk: number }>();
-for (const s of bekleniyorCevap) {
+for (const s of olculebilir) {
   const a = alanaGore.get(s.alan) ?? { toplam: 0, bosluk: 0 };
   a.toplam++;
   if (s.bosluk) a.bosluk++;
@@ -196,6 +219,7 @@ const satirlar: string[] = [
   '| Ölçüt | Değer |',
   '|---|---:|',
   `| Cevaplanması beklenen | ${bekleniyorCevap.length} |`,
+  `| Aktarım hatası (ölçüm dışı) | ${hatalar.length} |`,
   `| Cevaplanan | ${cevaplanan} (%${oran}) |`,
   `| **Boşluk — cevapsız** | **${bosluklar.length}** |`,
   `| Kapsam dışı sızıntı | ${sizintilar.length} / ${bekleniyorRed.length} |`,

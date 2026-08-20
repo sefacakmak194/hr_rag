@@ -38,22 +38,6 @@ export interface Message {
   error?: boolean;
 }
 
-export interface HealthResponse {
-  status: 'ready' | 'degraded';
-  airGapped: boolean;
-  embeddingModel: string;
-  retrieval: { topK: number; similarityThreshold: number };
-  index: { indexedChunks: number; documents: { docTitle: string; chunks: number }[] };
-  foundry: {
-    online: boolean;
-    baseUrl: string | null;
-    models: string[];
-    activeModel: string | null;
-    discovery: 'override' | 'cli' | 'fallback' | 'none';
-    error?: string;
-  };
-}
-
 export interface DocumentInfo {
   name: string;
   ext: string;

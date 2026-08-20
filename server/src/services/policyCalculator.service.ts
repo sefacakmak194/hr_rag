@@ -46,6 +46,29 @@ export interface PolicyTable {
    * "yillik izin" iceriyor ama cevabi tabloda degil, usul cumlesinde.
    */
   unitMarkers: string[];
+  /**
+   * Tabloyu DEVRE DISI birakan ibareler — konu anahtari fazla genel oldugunda.
+   *
+   * NEDEN VAR: `yillik-izin` anahtarlari arasinda "izni kac gun" gibi GENEL
+   * bir kalip var ve bu kalip her izin turunu yakaliyordu. Olculdu (saha
+   * denetimi, 20.08.2026):
+   *
+   *   "Evlilik izni kac gundur?"  -> yillik izin kademe tablosu
+   *   "Babalik izni kac gun?"     -> yillik izin kademe tablosu
+   *   "Sut izni kac gun?"         -> yillik izin kademe tablosu
+   *   "Vefat izni kac gundur?"    -> yillik izin kademe tablosu
+   *
+   * Hepsi YANLIS ve hepsi KENDINDEN EMIN: hesaplayici LLM'den ve alaka
+   * kapisindan ONCE calistigi icin soru korpusa HIC ulasmiyordu. Yani
+   * korpusa dogru maddeyi yazmak bu hatayi duzeltmiyor — nitekim 01/Madde 3'e
+   * eklenen evlilik izni belgeleri erisilemez kaliyordu.
+   *
+   * Anahtari daraltmak yerine AYRI BIR LISTE tutulmasinin sebebi: kalibi
+   * daraltmak ("yillik izni kac gun") mesru kisa ifadeleri
+   * ("izni kac gun kullanabilirim") kaybettiriyordu. Usul ayrimi da ayni
+   * sekilde ayri bir liste ile yapiliyor (bkz. PROCEDURE_MARKERS).
+   */
+  excludeKeywords?: string[];
 }
 
 /**
@@ -82,6 +105,15 @@ export const POLICY_TABLES: PolicyTable[] = [
       `${tenure} kıdemi olan bir çalışan ${tier.value} yıllık ücretli izin kullanabilir. ` +
       `Bu süre "${tier.label}" kademesi için geçerlidir.`,
     unitMarkers: ['kac gun', 'kac is gunu', 'ne kadar', 'kac gundur', 'kac gunluk'],
+    // Baska bir izin turu ADIYLA geciyorsa bu tablo calismaz; soru korpusa gider.
+    excludeKeywords: [
+      'evlilik izni', 'evlenme izni', 'nikah izni',
+      'babalik izni', 'dogum izni', 'analik izni', 'sut izni', 'evlat edinme',
+      'vefat izni', 'olum izni', 'cenaze izni',
+      'mazeret izni', 'ucretsiz izin', 'idari izin', 'afet izni', 'refakat izni',
+      'sinav izni', 'egitim izni', 'tasinma izni', 'kan bagisi',
+      'hastalik izni', 'rapor', 'is arama izni', 'telafi izni', 'sut hakki',
+    ],
     renderAll: () =>
       'Yıllık ücretli izin süresi kıdeme göre değişir: ' +
       '1 yıldan 5 yıla kadar (5 yıl dahil) kıdemi olanlar 14 iş günü, ' +
@@ -159,8 +191,22 @@ export function extractTenure(text: string): Tenure | null {
   );
 
   let last: RegExpExecArray | null = null;
-  for (const m of t.matchAll(pattern)) last = m as RegExpExecArray;
+  let prev: RegExpExecArray | null = null;
+  for (const m of t.matchAll(pattern)) {
+    prev = last;
+    last = m as RegExpExecArray;
+  }
   if (!last) return null;
+
+  // "5 YIL 6 AY" TEK BIR SUREDIR — iki ayri sure degil.
+  //
+  // "en son gecen sure kazanir" kurali takip sorulari icin dogru ("5 yillik …
+  // peki 10 yillik olsaydi?"), ama bitisik yazilan yil+ay ikilisinde yanlis
+  // sonuc veriyordu: son eslesme "6 ay" oldugu icin kidem 6 aya dusuyor,
+  // hicbir kademe tutmadigi icin hesaplayici null donuyordu. Iki eslesme
+  // metinde YAN YANA ise (aralarinda en fazla bir baglac) birlestirilir.
+  const birlesik = birlestirYilAy(prev, last, t);
+  if (birlesik) return birlesik;
 
   const [, decInt, decFrac, intYear, intMonth, wordYear, wordMonth] = last;
 
@@ -183,6 +229,33 @@ export function extractTenure(text: string): Tenure | null {
     return { months, label: `${months} ay` };
   }
   return null;
+}
+
+/**
+ * Yan yana duran yil ve ay eslesmelerini tek sureye toplar.
+ *
+ * Yalnizca ARADA baska sozcuk yokken birlestirir: "5 yil 6 ay" ve "5 yil ve 6
+ * ay" birlesir; "5 yillik calisan 6 ay izin alsa" birlesmez — orada iki ayri
+ * sayi var ve sonuncusu kidem degil. Sinir olarak 4 karakter secildi: " ve "
+ * en uzun mesru baglac.
+ */
+function birlestirYilAy(
+  prev: RegExpExecArray | null,
+  last: RegExpExecArray,
+  metin: string,
+): Tenure | null {
+  if (!prev) return null;
+
+  const ay = last[4] !== undefined ? Number(last[4]) : last[6] !== undefined ? NUMBER_WORDS[last[6]] : null;
+  if (ay === null || ay === undefined) return null;
+
+  const yil = prev[3] !== undefined ? Number(prev[3]) : prev[5] !== undefined ? NUMBER_WORDS[prev[5]] : null;
+  if (yil === null || yil === undefined) return null;
+
+  const bosluk = metin.slice((prev.index ?? 0) + prev[0].length, last.index ?? 0);
+  if (!/^\s*(ve\s*)?$/.test(bosluk) || bosluk.length > 4) return null;
+
+  return { months: yil * 12 + ay, label: `${yil} yıl ${ay} ay` };
 }
 
 function findTier(table: PolicyTable, months: number): Tier | null {
@@ -226,7 +299,11 @@ export interface PolicyAnswer {
 export function calculatePolicyAnswer(message: string): PolicyAnswer | null {
   const t = normalize(message);
 
-  const table = POLICY_TABLES.find((tbl) => tbl.keywords.some((k) => t.includes(k)));
+  const table = POLICY_TABLES.find(
+    (tbl) =>
+      tbl.keywords.some((k) => t.includes(k)) &&
+      !(tbl.excludeKeywords ?? []).some((k) => t.includes(k)),
+  );
   if (!table) return null;
 
   const tenure = extractTenure(message);

@@ -127,5 +127,18 @@ export async function runIngestion(
   }
 
   report.totalChunks = countChunks();
+
+  // ONBELLEKLER BIR KEZ DAHA DUSURULUR — basta dusurmek yetmiyor.
+  //
+  // BM25 indeksi ve Turkce onarim sozlugu tembel kuruluyor: ilk ihtiyac
+  // duyulan sorguda korpustan insa edilip surec omru boyunca saklaniyorlar.
+  // Yeniden indeksleme sirasinda gelen bir /api/chat istegi bu insayi YARIM
+  // KORPUS uzerinde tetikliyordu; islem bitince o yarim indeks onbellekte
+  // kaliyor ve sonraki aramalar eksik veriyle calisiyordu. Sondaki dusurme,
+  // yarista kim kazanirsa kazansin onbellegin taze korpustan kurulmasini
+  // garanti eder.
+  resetLexicalIndex();
+  resetDiacriticsSozluk();
+
   return report;
 }

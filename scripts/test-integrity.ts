@@ -35,9 +35,11 @@ const {
   lastArchiveState,
   ensureKeyPair,
   canonical,
+  rowFingerprint,
   GENESIS,
 } = await import('../server/src/services/integrity.service.js');
 import type { Principal } from '../server/src/services/identity.service.js';
+import type { ChainedRow } from '../server/src/services/integrity.service.js';
 
 let failures = 0;
 const check = (ok: boolean, label: string, detail = '') => {
@@ -279,6 +281,65 @@ const karisik = verifyAuditChain(db);
 check(karisik.preChain === 1, `zincir oncesi satir sayiliyor (${karisik.preChain})`);
 const toplam = (db.prepare('SELECT COUNT(*) AS n FROM audit_log').get() as { n: number }).n;
 check(karisik.chained === toplam - 1, `kalan ${karisik.chained} satir zincirde (toplam ${toplam})`);
+
+// -------------------------------------------- 8b) DEGISTIRIP YENIDEN ZINCIRLEME
+/**
+ * ARSIVIN ASIL VAR OLMA SEBEBI.
+ *
+ * Hash zinciri gizli anahtar kullanmaz. Veritabani dosyasina erisen biri bir
+ * satiri degistirip ondan sonraki TUM ozetleri yeniden hesaplayabilir; zincir
+ * kendi icinde kusursuz tutarli kalir ve tek basina yapilan dogrulama
+ * "butun" der. Zinciri gercekten kirilmaz yapan tek sey, imzali arsivin o
+ * gunku zincir basini makinenin DISINA sabitlemis olmasidir.
+ *
+ * Bu test o karsilastirmayi zorluyor. Karsilastirma yapilmadigi surece
+ * asagidaki saldiri sessizce geciyordu.
+ */
+console.log('\n  Degistirip yeniden zincirleme (arsiv olmadan gorulemez)\n');
+
+const arsivDurumu = lastArchiveState()!;
+const oncekiKafa = arsivDurumu.chainHead;
+
+disableTriggers();
+
+// 1. Erken bir satirin icerigini degistir.
+const kurban = (
+  db.prepare('SELECT id FROM audit_log WHERE row_hash IS NOT NULL ORDER BY id LIMIT 1').get() as { id: number }
+).id;
+db.prepare("UPDATE audit_log SET username = 'silinmis-kullanici' WHERE id = ?").run(kurban);
+
+// 2. O satirdan sonrasini bastan zincirle — saldirganin yapacagi sey.
+const zincirSatirlari = db
+  .prepare(
+    `SELECT id, at, user_id AS userId, username, role, question,
+            resolved_query AS resolvedQuery, citations, answered, duration_ms AS durationMs
+     FROM audit_log WHERE row_hash IS NOT NULL ORDER BY id`,
+  )
+  .all() as unknown as ChainedRow[];
+
+let onceki = GENESIS;
+for (const satir of zincirSatirlari) {
+  const ozet = rowFingerprint(onceki, satir);
+  db.prepare('UPDATE audit_log SET prev_hash = ?, row_hash = ? WHERE id = ?').run(onceki, ozet, satir.id);
+  onceki = ozet;
+}
+restoreTriggers();
+
+const yenidenZincirli = verifyAuditChain(db);
+check(
+  yenidenZincirli.ok,
+  'yeniden zincirlenmis kayit TEK BASINA "butun" gorunuyor (zincirin sinirı)',
+  yenidenZincirli.reason,
+);
+check(chainHead(db) !== oncekiKafa, 'zincir basi degisti — disaridan bakan bunu gorebilir');
+
+const arsivleBakis = verifyAuditChain(db, arsivDurumu);
+check(!arsivleBakis.ok, 'ARSIVLE karsilastirilinca yeniden zincirleme YAKALANIYOR');
+check(
+  (arsivleBakis.reason ?? '').includes('zincir başı arşivdekiyle uyuşmuyor'),
+  'gerekce yeniden zincirlemeyi isaret ediyor',
+  arsivleBakis.reason,
+);
 
 // ------------------------------------------------------ 9) canonical JSON
 console.log('\n  Anahtar sirasindan bagimsiz JSON\n');

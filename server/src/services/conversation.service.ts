@@ -54,6 +54,27 @@ function prune(): void {
   }
 }
 
+/**
+ * Konusma hafizasinin anahtari KULLANICIYA baglanir.
+ *
+ * `sessionId` istemciden geliyor ve tarayici sekmesinde yasiyor. Tek basina
+ * anahtar olarak kullanilinca iki delik aciliyordu:
+ *
+ *   1. Cikis yapilip ayni sekmede baska kullanici girdiginde sekmedeki
+ *      sessionId degismedigi icin yeni kullanici oncekinin konusma gecmisini
+ *      DEVRALIYORDU — ve takip sorusu cozumlemesi o gecmise bakiyor.
+ *   2. sessionId baska bir yere dusrse (kayit, ekran goruntusu, ortak cihaz)
+ *      sahibi olmayan biri gecmisi okuyabiliyordu.
+ *
+ * Kullanici KIMLIGIYLE ad alani ayirmak ikisini de kapatir: ayni sessionId
+ * farkli kullanicilarda farkli oturuma duser. Ad degil kimlik kullanilir;
+ * kullanici adi degistirilebilir ya da silinip yeniden acilabilir.
+ */
+export function sessionKey(userId: number, sessionId: unknown): string {
+  const raw = typeof sessionId === 'string' && sessionId ? sessionId : 'default';
+  return `${userId}:${raw}`;
+}
+
 export function getSession(id: string): Session {
   prune();
   let s = sessions.get(id);

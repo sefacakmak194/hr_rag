@@ -192,6 +192,48 @@ try {
 }
 check(reRunOk, 'sema kurulumu tekrar calistirilabiliyor');
 
+// ============================================ konusma hafizasi kullaniciya bagli
+/**
+ * `sessionId` ISTEMCIDEN gelir ve tarayici sekmesinde yasar. Tek basina anahtar
+ * olsaydi: (1) cikis yapip ayni sekmede giren yeni kullanici oncekinin konusma
+ * gecmisini devralir, (2) sessionId'yi ele geciren biri gecmisi okuyabilirdi.
+ */
+console.log('\n  Konusma oturumu kullaniciya bagli\n');
+
+const { sessionKey, getSession, recordTurn, clearSession } = await import(
+  '../server/src/services/conversation.service.js'
+);
+
+const ayniSekme = 'abc123';
+const anahtarBir = sessionKey(1, ayniSekme);
+const anahtarIki = sessionKey(2, ayniSekme);
+check(
+  anahtarBir !== anahtarIki,
+  `ayni sessionId farkli kullanicilarda farkli anahtar (${anahtarBir} / ${anahtarIki})`,
+);
+
+recordTurn(anahtarBir, {
+  question: 'maaşım ne kadar?',
+  resolvedQuestion: 'maaşım ne kadar?',
+  answer: 'gizli',
+  citations: [],
+});
+check(getSession(anahtarBir).turns.length === 1, 'birinci kullanicinin turu kaydedildi');
+check(
+  getSession(anahtarIki).turns.length === 0,
+  'IKINCI kullanici ayni sessionId ile bosluk goruyor — gecmis sizmiyor',
+  `${getSession(anahtarIki).turns.length} tur gorundu`,
+);
+
+// Sifirlama da ad alanina bagli: baskasinin oturumunu silemez.
+clearSession(anahtarIki);
+check(getSession(anahtarBir).turns.length === 1, 'baskasinin sifirlamasi birinci kullanicinin gecmisini silmiyor');
+clearSession(anahtarBir);
+check(getSession(anahtarBir).turns.length === 0, 'kendi oturumunu sifirlayabiliyor');
+
+check(sessionKey(1, undefined) === '1:default', 'sessionId yoksa kullaniciya ozel varsayilan');
+check(sessionKey(1, '') !== sessionKey(2, ''), 'bos sessionId de kullanicilar arasi ayrilyor');
+
 db.close();
 try {
   fs.rmSync(dir, { recursive: true, force: true });

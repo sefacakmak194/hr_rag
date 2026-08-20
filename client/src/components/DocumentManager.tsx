@@ -93,6 +93,7 @@ export default function DocumentManager({ user }: { user: SessionUser }) {
 
     const messages: string[] = [];
     let warning: string | null = null;
+    let failed = false;
 
     for (const file of list) {
       try {
@@ -111,6 +112,22 @@ export default function DocumentManager({ user }: { user: SessionUser }) {
 
         if (!res.ok) {
           messages.push(`${file.name}: ${body.error ?? `HTTP ${res.status}`}`);
+          failed = true;
+          continue;
+        }
+
+        // INDEKSLEME COKTUYSE YUKLEME BASARILI DEGILDIR.
+        //
+        // Sunucu 200 ve ok:true donuyor — dosya gercekten korpusa yazildi. Ama
+        // `indexError` doluysa indeks BOSALMIS demektir: reindex hata verdiginde
+        // depo sifirlaniyor ve yeniden kurulamiyor. Bu kontrol olmadan kullanici
+        // yesil bir "eklendi" mesaji goruyor, arama ise hicbir sey bulamiyordu.
+        if (body.indexError) {
+          messages.push(
+            `${file.name}: dosya kaydedildi ama indeks kurulamadı — ${body.indexError}. ` +
+              'Arama şu anda hiçbir dokümanı bulamaz; “Yeniden indeksle” ile tekrar deneyin.',
+          );
+          failed = true;
           continue;
         }
 
@@ -129,13 +146,14 @@ export default function DocumentManager({ user }: { user: SessionUser }) {
         }
       } catch (e) {
         messages.push(`${file.name}: ${(e as Error).message}`);
+        failed = true;
       }
     }
 
     setBusy(false);
     setNotice({
-      kind: warning ? 'warn' : 'ok',
-      text: messages.join('\n') + (warning ? `\n\n${warning}` : ''),
+      kind: failed ? 'error' : warning ? 'warn' : 'ok',
+      text: messages.join('\n') + (warning && !failed ? `\n\n${warning}` : ''),
     });
     // Ustveri tek yukleme icindir; birakilirsa bir sonraki dosyaya sessizce
     // yanlis not/tarih yapisirdi.

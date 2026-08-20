@@ -174,6 +174,20 @@ export function normalizeEffectiveFrom(input: unknown, fallback: Date = new Date
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Yürürlük tarihi anlaşılamadı: "${raw}". Beklenen biçim: 2026-09-01`);
   }
+
+  // TASMA KONTROLU — `new Date` takvimi dogrulamaz, TASIRIR.
+  //
+  // "2026-02-31" NaN uretmez; sessizce 3 Mart'a kayar. Yururluk tarihi hukuki
+  // bir taahhut: kullanicinin yazdigi gunde degil iki gun sonra devreye giren
+  // bir mevzuat degisikligi, sessiz oldugu icin en kotu turden hatadir.
+  // Ayristirilan tarihi girdiyle karsilastirmak kaymayi yakalar.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [yil, ay, gun] = raw.split('-').map(Number);
+    if (date.getFullYear() !== yil || date.getMonth() + 1 !== ay || date.getDate() !== gun) {
+      throw new Error(`Yürürlük tarihi takvimde yok: "${raw}".`);
+    }
+  }
+
   return date.toISOString();
 }
 

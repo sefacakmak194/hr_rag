@@ -368,6 +368,53 @@ check(typeof raporIk.body.currentWeek === 'string', 'gecerli hafta bildiriliyor'
 const raporYonetici = await req('GET', '/api/reports/policy-gaps', asYonetici);
 check(raporYonetici.status === 200, `yonetici raporu alabiliyor (${raporYonetici.status})`);
 
+// ================================================ 8) bekleyen surumler suzuluyor
+/**
+ * `requireDocumentManager` İK'yi de geciriyor — ama İK, `yonetici` etiketli bir
+ * dokumani `GET /api/documents` uzerinden goremez. Bekleyen surum uclari bu
+ * suzgeci atlarsa ayni ad oradan sizar: bir dokumanin DEGISECEK olmasi tek
+ * basina bilgidir ve projenin kurali dokumanin VARLIGINI bile gizliyor.
+ */
+console.log('\n  Bekleyen surumler erisim etiketine gore suzuluyor\n');
+
+const YARIN = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+// Iki dokumana da planlanmis birer surum: biri genel, biri yalnizca yoneticide.
+for (const doc of [GENEL, KISITLI_YONETIM] as const) {
+  const yukleme = await req('POST', '/api/documents', asYonetici, {
+    name: doc,
+    contentBase64: Buffer.from(`# Yeni\n\n## Madde 1\n${doc} planlanmis metin.`).toString('base64'),
+    effectiveFrom: YARIN,
+    note: 'planlanmis',
+  });
+  check(yukleme.status === 200 && yukleme.body.scheduled === true, `${doc} icin bekleyen surum kuruldu`);
+}
+
+const bekleyenYonetici = await req('GET', '/api/documents/pending', asYonetici);
+const adlar = (r: Res) => ((r.body.pending ?? []) as { name: string }[]).map((p) => p.name);
+check(bekleyenYonetici.status === 200, `yonetici bekleyenleri listeliyor (${bekleyenYonetici.status})`);
+check(adlar(bekleyenYonetici).includes(KISITLI_YONETIM), 'yonetici kendi etiketli dokumani goruyor');
+
+const bekleyenIk = await req('GET', '/api/documents/pending', asIk);
+check(bekleyenIk.status === 200, `ik bekleyenleri listeleyebiliyor (${bekleyenIk.status})`);
+check(adlar(bekleyenIk).includes(GENEL), 'ik genel dokumanin bekleyen surumunu goruyor');
+check(
+  !adlar(bekleyenIk).includes(KISITLI_YONETIM),
+  'ik GOREMEDIGI dokumanin bekleyen surumunu GORMUYOR',
+  adlar(bekleyenIk).join(', '),
+);
+
+// Iptal de gormeye baglidir: gormedigin planlanmis degisikligi silemezsin.
+const ikIptal = await req('DELETE', `/api/documents/${KISITLI_YONETIM}/pending`, asIk);
+check(ikIptal.status === 404, `ik gizli bekleyen surumu IPTAL EDEMIYOR (${ikIptal.status})`);
+check(
+  adlar(await req('GET', '/api/documents/pending', asYonetici)).includes(KISITLI_YONETIM),
+  'iptal denemesi sonrasi bekleyen surum yerinde duruyor',
+);
+
+const yoneticiIptal = await req('DELETE', `/api/documents/${KISITLI_YONETIM}/pending`, asYonetici);
+check(yoneticiIptal.status === 200, `yonetici kendi gordugunu iptal edebiliyor (${yoneticiIptal.status})`);
+
 // ---------------------------------------------------------------- sonuc
 server.close();
 try {

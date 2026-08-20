@@ -173,6 +173,10 @@ export function verifyAuditChain(
   };
 
   let prev = GENESIS;
+  // Arsivin imzaladigi satirda zincirin o anki basi. Asagida arsivdekiyle
+  // karsilastirilir; bulunamazsa null kalir.
+  let headAtExpected: string | null = null;
+
   for (const row of chainedRows) {
     if (row.prevHash !== prev) {
       return {
@@ -193,10 +197,19 @@ export function verifyAuditChain(
       };
     }
     prev = computed;
+    if (expected && row.id === expected.lastRowId) headAtExpected = computed;
   }
 
   // SON SATIR SILME kontrolu: zincir kendi basina goremez, arsiv gorur.
+  //
+  // Sira ONEMLI: once en dar ve en acik teshis, sonra genel olan. Ayni
+  // kurcalama birden fazla kosula uyabiliyor; kullaniciya en aciklayici
+  // gerekce verilmeli.
   if (expected) {
+    if (expected.lastRowId > 0 && report.lastRowId === null) {
+      return { ...report, ok: false, reason: 'Arşivde kayıt var ama veritabanı boş — denetim kaydı silinmiş.' };
+    }
+
     if (report.lastRowId !== null && report.lastRowId < expected.lastRowId) {
       return {
         ...report,
@@ -206,8 +219,38 @@ export function verifyAuditChain(
           `veritabanında yalnızca ${report.lastRowId} numaralı satıra kadar kayıt var. Sondan satır silinmiş.`,
       };
     }
-    if (expected.lastRowId > 0 && report.lastRowId === null) {
-      return { ...report, ok: false, reason: 'Arşivde kayıt var ama veritabanı boş — denetim kaydı silinmiş.' };
+
+    // ARSIVLENEN ZINCIR BASI KARSILASTIRILIR — asil koruma burasi.
+    //
+    // Hash zinciri gizli anahtar kullanmaz: satirlari degistiren biri ozetleri
+    // de yeniden hesaplayabilir ve zincir kendi icinde TUTARLI kalir. Yukaridaki
+    // yuruyus boyle bir kurcalamayi goremez. Zinciri kirilmaz yapan sey, imzali
+    // arsivin o gunku zincir basini makine disina sabitlemis olmasi.
+    //
+    // Bu deger karsilastirilmadiginda arsiv yalnizca "sondan satir silinmis mi"
+    // sorusunu cevapliyordu; araya girip satir degistirmek ve kalan zinciri
+    // yeniden hesaplamak fark edilmeden geciyordu — yani arsivin varlik sebebi
+    // olan durum yakalanmiyordu.
+    if (headAtExpected !== null && headAtExpected !== expected.chainHead) {
+      return {
+        ...report,
+        ok: false,
+        brokenAt: expected.lastRowId,
+        reason:
+          `${expected.lastRowId} numaralı satırda zincir başı arşivdekiyle uyuşmuyor — ` +
+          'kayıtlar değiştirilip yeniden zincirlenmiş. İmzalı arşivdeki metin geçerlidir.',
+      };
+    }
+
+    if (headAtExpected === null && expected.lastRowId > 0 && chainedRows.length > 0) {
+      return {
+        ...report,
+        ok: false,
+        brokenAt: expected.lastRowId,
+        reason:
+          `Arşivin imzaladığı ${expected.lastRowId} numaralı satır veritabanında yok — ` +
+          'silinmiş ya da kimliği değişmiş.',
+      };
     }
   }
 

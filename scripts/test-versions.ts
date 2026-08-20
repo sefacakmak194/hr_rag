@@ -143,13 +143,26 @@ const sabit = new Date('2020-05-05T10:00:00Z');
 check(normalizeEffectiveFrom(undefined, sabit) === sabit.toISOString(), 'boş girdi → verilen an');
 check(normalizeEffectiveFrom('   ', sabit) === sabit.toISOString(), 'boşluk → verilen an');
 
-let atti = false;
-try {
-  normalizeEffectiveFrom('dün');
-} catch {
-  atti = true;
-}
-check(atti, 'anlaşılmayan tarih hata fırlatır');
+const firlatiyorMu = (girdi: string) => {
+  try {
+    normalizeEffectiveFrom(girdi);
+    return false;
+  } catch {
+    return true;
+  }
+};
+
+check(firlatiyorMu('dün'), 'anlaşılmayan tarih hata fırlatır');
+
+// TAKVIMDE OLMAYAN GUN — `new Date` bunlari reddetmez, TASIRIR.
+// "2026-02-31" sessizce 3 Mart oluyordu; yürürlük tarihi hukuki bir taahhüt
+// olduğu için iki gün sonra devreye giren bir değişiklik sessiz bir hatadır.
+check(firlatiyorMu('2026-02-31'), '31 Şubat reddediliyor (3 Mart’a kaymıyor)');
+check(firlatiyorMu('2026-04-31'), '31 Nisan reddediliyor');
+check(firlatiyorMu('2026-13-01'), '13. ay reddediliyor');
+check(firlatiyorMu('2025-02-29'), 'artık yıl olmayan yılda 29 Şubat reddediliyor');
+check(!firlatiyorMu('2028-02-29'), 'artık yılda 29 Şubat KABUL ediliyor');
+check(!firlatiyorMu('2026-02-28'), 'geçerli tarih kabul ediliyor');
 
 // ================================================ 4) degistirilemezlik kisiti
 console.log('\n  Değiştirilemezlik (SQLite tetikleyicileri)\n');

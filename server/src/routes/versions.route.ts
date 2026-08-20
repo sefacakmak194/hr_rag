@@ -179,8 +179,18 @@ router.patch('/documents/:name/label', requireAuth, (req: Request, res: Response
 });
 
 // --------------------------------------------------------- bekleyen surumler
-router.get('/documents/pending', requireDocumentManager, (_req: Request, res: Response) => {
-  res.json({ pending: listPending() });
+/**
+ * Bekleyen surumler de kimlige gore suzulur.
+ *
+ * requireDocumentManager İK'yi da geciriyor; ama bir dokuman `yonetici`
+ * etiketliyse İK onu `GET /api/documents` uzerinden goremez. Burasi
+ * suzulmediginde ayni ad bu uctan sizip kurali deliyordu: bir dokumanin
+ * DEGISECEK olmasi tek basina bilgidir.
+ */
+router.get('/documents/pending', requireDocumentManager, (req: Request, res: Response) => {
+  const principal = req.principal as Principal;
+  const db = getDb();
+  res.json({ pending: listPending().filter((p) => canSeeDocument(db, p.name, principal)) });
 });
 
 /**
@@ -190,14 +200,31 @@ router.get('/documents/pending', requireDocumentManager, (_req: Request, res: Re
  * ama bir sonraki kontrolu bekleyemem" durumu icin var. Tarihi GELMEMIS
  * surumleri tasimaz — erken yururluk diye bir sey yok.
  */
-router.post('/documents/pending/promote', requireDocumentManager, async (_req: Request, res: Response) => {
+router.post('/documents/pending/promote', requireDocumentManager, async (req: Request, res: Response) => {
+  // Tasima islemi tum dokumanlar icin yapilir — zamanlayici zaten boyle
+  // kosuyor ve yururlugu cagirana gore kismak mevzuati bozardi. Suzulen sey
+  // RAPOR: cagiranin goremedigi dokumanin adi yanitta gecmez.
   const result = await promoteDueVersions();
-  res.json(result);
+  const principal = req.principal as Principal;
+  const db = getDb();
+  const gorunur = (adlar: string[]) => adlar.filter((ad) => canSeeDocument(db, ad, principal));
+
+  res.json({
+    ...result,
+    promoted: gorunur(result.promoted),
+    conflicts: gorunur(result.conflicts),
+  });
 });
 
-/** Planlanmis degisiklikten vazgecme. */
+/**
+ * Planlanmis degisiklikten vazgecme.
+ *
+ * `resolveDoc` kullanilir, `safeName` degil: gormedigin dokumanin planlanmis
+ * degisikligini de iptal edemezsin. Onceden yalnizca ad dogrulaniyordu; İK
+ * rolu, `yonetici` etiketli bir dokumanin bekleyen surumunu silebiliyordu.
+ */
 router.delete('/documents/:name/pending', requireDocumentManager, (req: Request, res: Response) => {
-  const file = safeName(req.params.name);
+  const file = resolveDoc(req);
   if (!file) return res.status(404).json(NOT_FOUND);
 
   const removed = discardPending(file);

@@ -36,6 +36,15 @@ const tenureCases: { input: string; months: number | null }[] = [
   { input: '5 yıllık çalışanın yıllık izni kaç gün? peki 10 yıllık olsaydı?', months: 120 },
   { input: '5 yıllık çalışanın izni? ya 20 yıllık?', months: 240 },
   { input: 'İstifa edersem ihbar süresi ne kadar? 2 yıllık olsam?', months: 24 },
+  // BITISIK YIL+AY TEK SUREDIR — "en son kazanir" kurali buraya uygulanmamali.
+  // Uygulanirsa kidem 6 aya dusuyor, hicbir kademe tutmuyor ve hesaplayici
+  // sessizce devre disi kaliyordu.
+  { input: '5 yıl 6 ay çalışan', months: 66 },
+  { input: '2 yıl ve 3 ay kıdemi olan', months: 27 },
+  { input: 'üç yıl iki ay çalıştım', months: 38 },
+  // Ama araya baska bir sey girerse birlestirilmez: asagidaki "6 ay" kidem
+  // degil, sorulan iznin suresi.
+  { input: '5 yıllık çalışan 6 ay ücretsiz izin alabilir mi?', months: 6 },
 ];
 for (const c of tenureCases) {
   const got = extractTenure(c.input);
@@ -83,6 +92,25 @@ const calcCases: { q: string; expect: string | null }[] = [
   { q: 'İhbar süresi nedir?', expect: null },
   // ilgisiz
   { q: 'Kreş desteği ne kadar?', expect: null },
+  // BASKA IZIN TURLERI — kademe tablosu CALISMAMALI (excludeKeywords).
+  //
+  // Saha denetiminde (20.08.2026) olculdu: "izni kac gun" kalibi her izin
+  // turunu yakaliyor ve hepsine YILLIK IZIN kademe tablosuyla yanit
+  // veriliyordu. Hesaplayici alaka kapisindan once calistigi icin soru
+  // korpusa hic ulasmiyor; yani bu, korpusa dogru maddeyi yazmakla
+  // duzelmeyen bir hataydi. Bu satirlar onu kilitler.
+  { q: 'Evlilik izni kaç gün?', expect: null },
+  { q: 'Evlilik izni kaç gündür ve hangi resmi evrakları ibraz etmem gerekir?', expect: null },
+  { q: 'Babalık izni kaç gün?', expect: null },
+  { q: 'Süt izni kaç gün?', expect: null },
+  { q: 'Vefat izni kaç gündür?', expect: null },
+  { q: 'Ücretsiz izin kaç gün?', expect: null },
+  { q: 'Sınav izni kaç gün?', expect: null },
+  { q: 'Taşınma izni kaç gün?', expect: null },
+  { q: 'Refakat izni ne kadar?', expect: null },
+  // ...ama YILLIK izin sorusu, baska bir izin turu adi gecmedigi surece
+  // tabloya gitmeye devam etmeli (excludeKeywords fazla genis olmamali).
+  { q: 'Yıllık izni kaç gün?', expect: '14 iş günü' },
   // takip sorulari — en son kidem kazanir
   { q: '5 yıllık çalışanın yıllık izni kaç gün? peki 10 yıllık olsaydı?', expect: '20 iş günü' },
   { q: '5 yıllık çalışanın yıllık izni? ya 20 yıllık?', expect: '26 iş günü' },

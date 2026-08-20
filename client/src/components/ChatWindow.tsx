@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CitationList } from './CitationBadge';
 import DetailsBlock from './DetailsBlock';
+import { clearSessionId, getSessionId } from '../chatSession';
 import type { AnswerBasis, AnswerDetails, Citation, Message } from '../types';
 
 const SUGGESTIONS = [
@@ -13,17 +14,6 @@ const SUGGESTIONS = [
 ];
 
 const uid = () => Math.random().toString(36).slice(2);
-
-/** Oturum kimligi sekme omru boyunca sabit kalir; sunucu hafizasi buna baglanir. */
-const SESSION_KEY = 'phr-session-id';
-function getSessionId(): string {
-  let id = sessionStorage.getItem(SESSION_KEY);
-  if (!id) {
-    id = uid() + uid();
-    sessionStorage.setItem(SESSION_KEY, id);
-  }
-  return id;
-}
 
 const fmtTime = (d: Date) =>
   d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -187,7 +177,7 @@ export function ChatWindow() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: getSessionId() }),
     }).catch(() => {});
-    sessionStorage.removeItem(SESSION_KEY);
+    clearSessionId();
     stampRef.current.clear();
     setDurations({});
     setMessages([]);

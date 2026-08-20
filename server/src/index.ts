@@ -11,7 +11,7 @@ import { promoteDueVersions } from './services/corpusSync.service.js';
 import { purgeOldGaps } from './services/policyGap.service.js';
 import { attachPrincipal } from './middleware/session.js';
 import { checkFoundryHealth } from './services/foundryClient.service.js';
-import { countChunks, listDocuments, getDb, SYSTEM_PRINCIPAL } from './services/vectorStore.service.js';
+import { countChunks, getDb } from './services/vectorStore.service.js';
 import { warmupEmbeddingModel } from './services/embedding.service.js';
 import {
   SERVER_PORT,
@@ -46,16 +46,26 @@ app.use((req, res, next) => {
   next();
 });
 
-/** Sistem durumu: indeks + Foundry Local runtime. */
+/**
+ * Sistem durumu: indeks + Foundry Local runtime.
+ *
+ * KIMLIK ISTEMEZ — bilincli. Bu uc `attachPrincipal`dan once baglanir ve
+ * canlilik yoklamasi olarak kullanilir (kurulum betikleri, paketlenmis exe
+ * acilisi, karsilastirma betikleri). Oturum acamadan da cevap vermesi gerekir.
+ *
+ * TAM DA BU YUZDEN dokuman ADI dondurmez. Onceden `listDocuments(SYSTEM_PRINCIPAL)`
+ * cagriliyordu: kimliksiz bir istek, erisimi kisitli dokumanlarin adlarini ve
+ * parca sayilarini aliyordu. Projenin kendi kurali bunu yasakliyor — dokumanin
+ * VAR OLDUGU bilgisi bile sizmamali (bkz. versions.route.ts dosya basi).
+ * Dokuman listesi kimlige gore suzulmus haliyle `GET /api/documents`te.
+ */
 app.get('/api/health', async (_req, res) => {
   const foundry = await checkFoundryHealth();
   let indexedChunks = 0;
-  let documents: { docTitle: string; chunks: number }[] = [];
   let indexError: string | undefined;
 
   try {
     indexedChunks = countChunks();
-    documents = listDocuments(SYSTEM_PRINCIPAL);
   } catch (error) {
     indexError = (error as Error).message;
   }
@@ -65,7 +75,7 @@ app.get('/api/health', async (_req, res) => {
     airGapped: true,
     embeddingModel: EMBEDDING_MODEL,
     retrieval: { topK: TOP_K, similarityThreshold: SIMILARITY_THRESHOLD },
-    index: { indexedChunks, documents, error: indexError },
+    index: { indexedChunks, error: indexError },
     foundry,
   });
 });

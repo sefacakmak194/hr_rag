@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { clearSessionId } from '../chatSession';
 import type { AuthStatus, SessionUser } from '../types';
 
 /**
@@ -64,6 +65,9 @@ export default function AuthGate({
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    // Sekmedeki sohbet kimligi de dusurulur; sonraki kullanici oncekinin
+    // oturum kimligini tasimasin.
+    clearSessionId();
     setUsername('');
     setPassword('');
     await refresh();

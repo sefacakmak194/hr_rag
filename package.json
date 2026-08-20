@@ -18,6 +18,7 @@
     "compare": "npm run compare --prefix server",
     "verify-archive": "npm run verify-archive --prefix server --",
     "arsivle": "npm run arsivle --prefix server --",
-    "sweep": "npm run sweep --prefix server --"
+    "sweep": "npm run sweep --prefix server --",
+    "saha": "npm run saha --prefix server --"
   }
 }

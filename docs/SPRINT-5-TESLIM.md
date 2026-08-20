@@ -12,7 +12,7 @@ Son güncelleme: 19.08.2026
 
 Kurumsal İK mevzuatı üzerinde **hiçbir veri makineyi terk etmeden** çalışan,
 kaynak gösterimli, sürüm takipli ve denetlenebilir bir soru-cevap asistanı.
-Microsoft Foundry Local üzerinde, 22 doküman / 172 bölüm.
+Microsoft Foundry Local üzerinde, 23 doküman / 201 bölüm.
 
 Ayırt edici olan şey model değil, **modelin etrafına konan mühendislik**:
 sistem cevabı bilmediğinde bilmediğini söylüyor, bunu ölçüyoruz, ve
@@ -84,7 +84,7 @@ seçmek uydurma olurdu; sistem **tablonun tamamını** veriyor.
 
 ### İstasyon 4 — Kilit kapıda (erişim kontrolü) · ~60 sn
 
-**Yap:** Yönetici olarak **Korpus** panelini aç, bir dokümanın etiketini
+**Yap:** Yönetici olarak **Kaynaklar** panelini aç, bir dokümanın etiketini
 `genel` → `ik` yap.
 
 **Sonra:** Çalışan rolüyle giriş yap ve o dokümandaki bir şeyi sor.
@@ -125,7 +125,7 @@ hash üretmek, zaten değiştirilmiş olabilecek veriye sahte güvence verirdi.
 
 ### İstasyon 6 — Politika boşluğu raporu · ~40 sn
 
-**Yap:** **Boşluklar** panelini aç.
+**Yap:** **Cevaplanamayanlar** panelini aç.
 
 **Söyle:** Çalışanların sorduğu ama mevzuatta karşılığı olmayan konular. Kayıtlar
 **kim sorduğu bilgisini taşımaz** ve hafta çözünürlüğünde tutulur — tam saat
@@ -305,7 +305,7 @@ Bunları saklamak, projenin kendi ilkesine aykırı olurdu.
 
 ## 6. Teslim kontrol listesi
 
-- [x] Korpus 22 doküman / 172 bölüm, kapsam belgesi yazılı
+- [x] Korpus 23 doküman / 201 bölüm, kapsam belgesi yazılı
 - [x] `npm test` — 531 doğrulama, 15 paket
 - [x] `npm run eval` — 51/52
 - [x] CI yeşil (Linux, çevrim dışı)

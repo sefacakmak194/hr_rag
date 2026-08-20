@@ -1,13 +1,17 @@
 # Private Enterprise HR & Policy Local RAG Assistant
 
 Kurumsal İK mevzuatı üzerinde **%100 çevrim dışı (air-gapped)** çalışan, kaynak gösterimli
-yerel RAG asistanı. **22 doküman / 172 bölüm** ile 10 İK alanını kapsar: çalışma düzeni,
+yerel RAG asistanı. **23 doküman / 201 bölüm** ile 11 İK alanını kapsar: çalışma düzeni,
 izinler, ücret ve yan haklar, istihdam süreci, performans, disiplin, İSG ve uyum (KVKK).
 Kapsamın tam dökümü: [data/KAPSAM.md](data/KAPSAM.md).
 
 > **Projeyi hızlı değerlendirmek için:** [docs/SPRINT-5-TESLIM.md](docs/SPRINT-5-TESLIM.md)
 > — 6 istasyonluk demo akışı, derlenmiş ölçümler ve kurulum. Bu README mühendislik
 > ayrıntısı içindir.
+
+> **Korpus kurgusaldır.** `data/corpus/` altındaki 22 doküman gerçek bir şirketin
+> mevzuatı değildir; sistemi göstermek ve ölçmek için yazılmıştır. İçindeki tutarlar,
+> gün sayıları ve süreçler örnektir ve hiçbir kurum için bağlayıcı değildir.
 
 Hiçbir metin, embedding veya sorgu dış bulut API'larına gönderilmez. Tüm doküman işleme,
 embedding üretimi, benzerlik araması ve model çıkarımı host makinede gerçekleşir.
@@ -198,21 +202,26 @@ bir hesap kullanılır (bkz. `scripts/eval-auth.ts`, `scripts/eval-sandbox.ts`).
 
 | Paket | Kapsam |
 |---|---|
-| `test:policy` | 33 test — kademe hesabı, sınır değerleri, korpus tutarlılığı |
-| `test:identity` | 38 test — parola, oturum, roller, denetim değiştirilemezliği |
-| `test:access` | 41 test — erişim filtresi servis katmanında (arama, dayanak, BM25) |
-| `test:versions` | 61 test — sürüm açılma kuralı, yürürlük tarihi, arşiv, fark hesabı |
-| `test:endpoints` | 46 test — **HTTP ucu** düzeyinde erişim kontrolü (gerçek Express) |
-| `test:integrity` | 48 test — hash zinciri, imzalı arşiv, kurcalama tespiti |
-| `test:gap` | 25 test — politika boşluğu: kimliksizlik, kümeleme, saklama |
-| `test:evidence` | 18 test — cümle/yan cümle bölme, canlı korpus üzerinde kanıt seçimi |
+| `test:policy` | 55 test — kademe hesabı, sınır değerleri, korpus tutarlılığı |
+| `test:scope` | 32 test — kapsam dışı konuların deterministik reddi |
+| `test:diacritics` | 27 test — Türkçe harfsiz yazımın korpustan onarımı |
+| `test:guard` | 22 test — model bozuk metin üretirse mevzuat alıntısıyla değiştirme |
+| `test:identity` | 45 test — parola, oturum, roller, denetim değiştirilemezliği |
+| `test:access` | 39 test — erişim filtresi servis katmanında (arama, dayanak, BM25) |
+| `test:versions` | 81 test — sürüm açılma kuralı, yürürlük tarihi, arşiv, fark hesabı |
+| `test:endpoints` | 62 test — **HTTP ucu** düzeyinde erişim kontrolü (gerçek Express) |
+| `test:integrity` | 58 test — hash zinciri, imzalı arşiv, kurcalama tespiti |
+| `test:gap` | 27 test — politika boşluğu: kimliksizlik, kümeleme, saklama |
+| `test:evidence` | 17 test — cümle/yan cümle bölme, canlı korpus üzerinde kanıt seçimi |
 | `test:documents` | 21 test — dosya adı doğrulaması (dizin geçişi, uzantı kaçışı) |
 | `test:formats` | DOCX okuma, biçim önceliği, taranmış PDF + OCR |
 | `test:audit` | Korpus sağlığı — bozuk korpusta bulmalı, temizde susmalı |
 | `test:rag` | 70 test — 24 niyet, 14 takip sorusu, 32 retrieval |
-| `test:pdf` | 22 doküman — PDF metin çıkarımı sadakati |
+| `test:pdf` | 23 doküman — PDF metin çıkarımı sadakati |
 | `eval` | 48 uçtan uca cevap doğruluğu ölçümü |
 | `compare` | aynı vaka kümesi × birden çok model — doğruluk/gecikme matrisi |
+| `sweep` | 10.000 sorgu (500 temel soru × 20 ifade) — hangi konular cevapsız kalıyor |
+| `saha` | 100 gerçek çalışan sorusu, **uçtan uca** — boşluk, sızıntı ve olgu hatası |
 
 Pakette şunlar var: şartname Bölüm 6 / Adım 3 kabul soruları, 8 İK alanının tamamını
 kapsayan retrieval regresyonları, kapsam dışı reddetme senaryoları ve niyet sınıflandırma
@@ -744,7 +753,7 @@ tekrarı) ve yakalarsa akışı keser; yerine mevzuatın **birebir** cümlesi g�
 
 Bu projedeki 20 doküman elle yazıldı — temiz, tutarlı, çelişkisiz. Gerçek İK arşivleri
 böyle değil. `corpusAudit.service.ts` üç senaryoyu deterministik olarak raporlar
-(`GET /api/corpus/audit`, Korpus panelinde görünür):
+(`GET /api/corpus/audit`, Kaynaklar panelinde görünür):
 
 | Bulgu | Ne demek |
 |---|---|
@@ -804,7 +813,7 @@ tek sayfa ≈ 1.7 sn.
 
 ## Korpus yönetimi (arayüzden)
 
-Başlıktaki **Korpus** düğmesi doküman panelini açar: Markdown/PDF sürükle-bırak,
+Kenar çubuğundaki **Kaynaklar** düğmesi doküman panelini açar: Markdown/PDF sürükle-bırak,
 doküman listesi (parça sayısı, boyut), silme ve elle yeniden indeksleme.
 
 ```
@@ -1209,10 +1218,12 @@ private-hr-rag/
 │   └── package.json
 ├── client/
 │   ├── src/
-│   │   ├── components/{ChatWindow,CitationBadge,StatusIndicator,DocumentManager}.tsx
+│   │   ├── components/{ChatWindow,CitationBadge,DetailsBlock,Sidebar}.tsx
 │   │   ├── components/{AuthGate,AuditPanel,VersionHistory,IntegrityPanel}.tsx
-│   │   ├── components/{PolicyGapPanel,DetailsBlock,CitationBadge}.tsx
+│   │   ├── components/{DocumentManager,PolicyGapPanel}.tsx
 │   │   ├── App.tsx · main.tsx · styles.css · types.ts
+│   │   ├── sideStats.ts            # kenar çubuğu ölçüleri (ekrana göre)
+│   │   └── chatSession.ts          # sekme oturum kimliği
 │   └── vite.config.ts
 ├── scripts/
 │   ├── ingest.ts
@@ -1314,9 +1325,12 @@ olguyu aynı bölümden istiyor. Yani doğru tasarım "işaretle **ve** tam metn
 
 ## Lisans
 
-Tescilli — tüm hakları saklıdır. Ayrıntı ve üçüncü taraf bildirimleri için
-[LICENSE](LICENSE).
+Kaynak kodu **herkese açık**, ancak yazılım **açık kaynak değil** — tüm hakları
+saklıdır. Kodun görünür olması kullanım hakkı vermez.
 
-Değerlendirme, inceleme ve teknik denetim amacıyla çalıştırmak serbesttir;
-üretim kullanımı ayrı bir yazılı lisans gerektirir. Depoda taşınan
-`tur.traineddata` ve tüm bağımlılıklar kendi lisanslarına tabidir.
+**Serbest:** okumak, incelemek, kendi ortamınızda derleyip çalıştırmak,
+değerlendirmek. **Yazılı izin gerektirir:** dağıtım, yeniden yayımlama, ticari
+kullanım, türev çalışma ve üretim ortamında kullanım.
+
+Tam metin ve üçüncü taraf bildirimleri: [LICENSE](LICENSE). Depoda taşınan
+`tur.traineddata`, yazı tipleri ve tüm bağımlılıklar kendi lisanslarına tabidir.

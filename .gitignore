@@ -32,6 +32,9 @@ data/arsiv/
 # server/vendor/tessdata/ altinda ve IZLENIR (air-gapped OCR icin sart).
 server/*.traineddata
 
+# TypeScript artimli derleme onbellegi — makineye ozel mutlak yollar tasir
+client/tsconfig.tsbuildinfo
+
 # Isletim sistemi / editor artiklari
 Thumbs.db
 .DS_Store

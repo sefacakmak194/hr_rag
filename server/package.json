@@ -37,7 +37,9 @@
     "test:gap": "tsx ../scripts/test-gap.ts",
     "calibrate:gap": "tsx ../scripts/calibrate-gap.ts",
     "arsivle": "tsx ../scripts/export-archive.ts",
-    "sweep": "tsx ../scripts/sweep.ts"
+    "sweep": "tsx ../scripts/sweep.ts",
+    "saha": "tsx ../scripts/saha-denetimi.ts",
+    "skor": "tsx ../scripts/skor-bak.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

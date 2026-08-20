@@ -5,24 +5,26 @@ Copyright (c) 2026 Sefa Çakmak and İlayda Adaklı. All rights reserved.
 TÜRKÇE
 --------------------------------------------------------------------------
 
-Bu yazılım ve beraberindeki dokümantasyon ("Yazılım") tescillidir ve
-gizlidir. Yazılım açık kaynak değildir.
+Bu yazılımın kaynak kodu HERKESE AÇIK olarak yayımlanmıştır; ancak yazılım
+AÇIK KAYNAK DEĞİLDİR. Kodun görünür olması, kullanım hakkı verildiği
+anlamına gelmez.
 
 1. HAK SAHİPLİĞİ
    Yazılım üzerindeki tüm fikri mülkiyet hakları, yukarıda adı geçen telif
    hakkı sahiplerine MÜŞTEREKEN aittir. Bu belge hiçbir hak devri içermez.
 
-2. YASAK KULLANIMLAR
-   Telif hakkı sahiplerinin ÖNCEDEN YAZILI izni olmaksızın Yazılım'ın
-   tamamının veya bir kısmının kopyalanması, değiştirilmesi, birleştirilmesi,
-   yayımlanması, dağıtılması, alt lisanslanması, satılması, kiralanması veya
-   türev çalışmalarının oluşturulması yasaktır.
+2. İZİN VERİLEN KULLANIM
+   Herkes bu yazılımı; okuyabilir, inceleyebilir, kendi ortamında
+   derleyip çalıştırabilir ve değerlendirebilir. Bu izin özellikle
+   yarışma/program jürilerini, işe alım değerlendirmelerini ve pilot
+   inceleme yapan kurumları kapsar.
 
-3. DEĞERLENDİRME İZNİ
-   Yazılım'a telif hakkı sahipleri tarafından erişim verilen kişi ve kurumlar,
-   Yazılım'ı YALNIZCA değerlendirme, inceleme ve teknik denetim amacıyla
-   görüntüleyebilir ve kendi ortamlarında çalıştırabilir. Bu izin;
-   yarışma/program jürilerini ve pilot değerlendirme yapan kurumları kapsar.
+3. İZİN VERİLMEYEN KULLANIM
+   Telif hakkı sahiplerinin ÖNCEDEN YAZILI izni olmaksızın Yazılım'ın
+   tamamının veya bir kısmının dağıtılması, yeniden yayımlanması, alt
+   lisanslanması, satılması, kiralanması, ticari amaçla kullanılması veya
+   türev çalışmalarının oluşturulup dağıtılması yasaktır.
+
    Üretim ortamında kullanım, ayrı bir yazılı lisans sözleşmesi gerektirir.
 
 4. GARANTİ REDDİ
@@ -42,19 +44,20 @@ Lisanslama talepleri için:
 ENGLISH (summary — the Turkish text above governs)
 --------------------------------------------------------------------------
 
-This software is proprietary and confidential. It is NOT open source.
+The source code of this software is published PUBLICLY, but the software is
+NOT open source. Visibility of the code does not grant a licence to use it.
 
 All intellectual property rights in this software are held JOINTLY by the
-copyright holders named above.
+copyright holders named above. This document transfers no rights.
 
-No permission is granted to copy, modify, distribute, sublicense or sell
-this software, in whole or in part, without the prior WRITTEN consent of the
-copyright holders.
+PERMITTED. Anyone may read, study, build and run this software in their own
+environment, and evaluate it. This expressly covers competition or program
+juries, hiring evaluations, and organizations conducting pilot reviews.
 
-Parties granted access by the copyright holders may view and run the software
-SOLELY for evaluation, review and technical audit purposes — this includes
-competition or program juries and organizations conducting pilot
-evaluations. Production use requires a separate written license agreement.
+NOT PERMITTED. Without the prior WRITTEN consent of the copyright holders,
+you may not distribute, republish, sublicense, sell, rent, use commercially,
+or create and distribute derivative works of this software, in whole or in
+part. Production use requires a separate written licence agreement.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. It does not
 constitute legal or binding HR advice; its answers must be read together with
@@ -99,3 +102,17 @@ Depoda taşınan veri dosyaları:
       türevi). Bu depoda dağıtılmaz; ilk kurulumda indirilir.
 
 Microsoft Foundry Local ayrı bir üründür ve kendi lisans koşullarına tabidir.
+
+--------------------------------------------------------------------------
+KORPUS VERİSİ / CORPUS DATA
+--------------------------------------------------------------------------
+
+`data/corpus/` ve `data/corpus-pdf/` altındaki 22 İK dokümanı KURGUSALDIR.
+Gerçek bir şirketin mevzuatı değildir; sistemi göstermek ve ölçmek için
+yazılmıştır. İçlerindeki tutarlar, gün sayıları ve süreçler örnektir ve
+hiçbir kurum için bağlayıcı değildir.
+
+The 22 HR documents under `data/corpus/` and `data/corpus-pdf/` are FICTIONAL.
+They are not any real company's policies; they were written to demonstrate and
+measure the system. Amounts, day counts and processes in them are examples and
+are binding on no organization.
